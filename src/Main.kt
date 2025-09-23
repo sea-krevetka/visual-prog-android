@@ -1,38 +1,8 @@
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.PI
-import kotlin.random.Random
-
-class Human(
-    private var fullName: String,
-    private var age: Int,
-    private var speed: Double = 1.0
-) {
-    private var x: Double = 0.0
-    private var y: Double = 0.0
-
-    fun move(dt: Double) {
-        val angle = Random.nextDouble(0.0, 2 * PI)
-        x += speed * dt * cos(angle)
-        y += speed * dt * sin(angle)
-    }
-
-    fun getFullName() = fullName
-    fun setFullName(name: String) { fullName = name }
-
-    fun getAge() = age
-    fun setAge(newAge: Int) { age = newAge }
-
-    fun getSpeed() = speed
-    fun setSpeed(newSpeed: Double) { speed = newSpeed }
-
-    fun getX() = x
-    fun getY() = y
-
-    override fun toString(): String {
-        return "$fullName (возраст: $age, скорость: %.2f) → позиция (%.2f, %.2f)".format(speed, x, y)
-    }
-}
+import entity.Human
+import entity.Driver
+import manager.PositionManager
+import util.*
+import kotlin.concurrent.thread
 
 fun main() {
     val humans = arrayOf(
@@ -41,42 +11,84 @@ fun main() {
         Human("Рагнвиндр Дилюк Крепусович", 22, 1.7),
         Human("Тарталья Аякс Анатольев", 24, 2.0),
         Human("Флинс Кирилл Чудомирович", 20, 1.9),
-        Human("Ритинмунд Альбедо Рейндоттир", 18, 1.5),
-        Human("Альберич Кейя Александрович", 23, 1.2),
-        Human("Ран Нагиса Годфазерович", 21, 3.0),
-        Human("Иль Креветка Шуриковна", 16, 1.6),
-        Human("Санни Кевиновна Каслана", 25, 4.2),
-        Human("Фрогуна Таеся Кваковна", 52, 5.0)
+        Human("Ритинмунд Альбедо Рейндоттир", 18, 1.5)
+    )
+
+    val drivers = arrayOf(
+        Driver("Альберич Кейя Александрович", 23, 1.2, "B", 8.0),
+        Driver("Ран Нагиса Годфазерович", 21, 3.0, "C", 12.0),
+        Driver("Иль Креветка Шуриковна", 16, 1.6, "B", 6.0),
+        Driver("Санни Кевиновна Каслана", 25, 4.2, "D", 15.0),
+        Driver("Фрогуна Таеся Кваковна", 52, 5.0, "BE", 18.0)
     )
 
     val simulationTime = 10.0
     val timeStep = 0.5
-    var currentTime = 0.0
 
-    println("Начало симуляции движения ${humans.size} человек")
+    PositionManager.clearAllPositions()
+
+    println("Начало симуляции движения ${humans.size + drivers.size} объектов")
+    println("Пешеходов: ${humans.size}, Водителей: ${drivers.size}")
     println("Время симуляции: $simulationTime секунд")
     println("=" * 50)
 
-    while (currentTime <= simulationTime) {
-        println("\nВремя: %.1f сек".format(currentTime))
-        println("-" * 30)
-
-        humans.forEach { human ->
-            human.move(timeStep)
-            println(human)
+    val humanThread = thread {
+        var currentTime = 0.0
+        while (currentTime <= simulationTime) {
+            humans.forEach { human ->
+                human.move(timeStep)
+            }
+            currentTime += timeStep
+            Thread.sleep((timeStep * 1000).toLong())
         }
-
-        currentTime += timeStep
-        Thread.sleep(10)
     }
+
+    val driverThread = thread {
+        var currentTime = 0.0
+        while (currentTime <= simulationTime) {
+            drivers.forEach { driver ->
+                driver.move(timeStep)
+            }
+            currentTime += timeStep
+            Thread.sleep((timeStep * 1000).toLong())
+        }
+    }
+
+    var currentTime = 0.0
+    while (currentTime <= simulationTime) {
+        Thread.sleep(500)
+        
+        println("\nВремя: %.1f сек".format(currentTime))
+        println("-" * 50)
+        
+        println("ПЕШЕХОДЫ:")
+        humans.forEach { human ->
+            println("  $human")
+        }
+        
+        println("\nВОДИТЕЛИ:")
+        drivers.forEach { driver ->
+            println("  $driver")
+        }
+        
+        currentTime += 0.5
+    }
+
+    humanThread.join()
+    driverThread.join()
 
     println("\n" + "=" * 50)
     println("Симуляция завершена!")
 
     println("\nФинальные позиции:")
+    println("ПЕШЕХОДЫ:")
     humans.forEach { human ->
-        println("${human.getFullName()}: (%.2f, %.2f)".format(human.getX(), human.getY()))
+        println("  ${human.getFullName()}: (%.2f, %.2f)".format(human.getX(), human.getY()))
+    }
+    
+    println("\nВОДИТЕЛИ:")
+    drivers.forEach { driver ->
+        println("  ${driver.getFullName()}: (%.2f, %.2f), направление: %.2f°".format(
+            driver.getX(), driver.getY(), Math.toDegrees(driver.getDirection())))
     }
 }
-
-operator fun String.times(n: Int): String = repeat(n) 
