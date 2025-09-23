@@ -11,11 +11,11 @@ class Driver(
     fullName: String,
     age: Int,
     speed: Double = 5.0,
-    private val licenseCategory: String = "B",
-    private val carSpeed: Double = 10.0
-) : Human(fullName, age, speed) {
+    override val licenseCategory: String = "B",
+    override val carSpeed: Double = 10.0
+) : Human(fullName, age, speed), Drivable {
     
-    private var direction: Double = 0.0
+    override var direction: Double = 0.0
     
     init {
         direction = Random.nextDouble(0.0, 2 * PI)
@@ -73,9 +73,13 @@ class Driver(
         }
     }
     
-    fun getLicenseCategory() = licenseCategory
-    fun getCarSpeed() = carSpeed
-    fun getDirection() = direction
+    override fun stop() {
+        println("Водитель ${getFullName()} остановил автомобиль")
+    }
+    
+    override fun getLicenseInfo(): String {
+        return "${super.getLicenseInfo()}, скорость автомобиля: ${String.format("%.2f", carSpeed)}"
+    }
     
     override fun toString(): String {
         return "${getFullName()} (водитель, возраст: ${getAge()}, права: $licenseCategory, " +
