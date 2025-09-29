@@ -7,14 +7,21 @@ import kotlin.math.PI
 import kotlin.random.Random
 
 open class Human(
-    private var fullName: String,
-    private var age: Int,
+    override val fullName: String,
+    override val age: Int,
     private var speed: Double = 1.0
-) {
+) : Movable, Positionable, PersonalInfo {
+    
     private var x: Double = 0.0
     private var y: Double = 0.0
 
-    open fun move(dt: Double) {
+    override val x: Double
+        get() = this.x
+        
+    override val y: Double
+        get() = this.y
+
+    override fun move(dt: Double) {
         val originalX = x
         val originalY = y
         
@@ -49,17 +56,8 @@ open class Human(
         }
     }
 
-    fun getFullName() = fullName
-    fun setFullName(name: String) { fullName = name }
-
-    fun getAge() = age
-    fun setAge(newAge: Int) { age = newAge }
-
     fun getSpeed() = speed
     fun setSpeed(newSpeed: Double) { speed = newSpeed }
-
-    fun getX() = x
-    fun getY() = y
 
     override fun toString(): String {
         return "$fullName (возраст: $age, скорость: %.2f) → позиция (%.2f, %.2f)".format(speed, x, y)

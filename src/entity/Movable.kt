@@ -3,7 +3,7 @@ package entity
 interface Movable {
     fun move(dt: Double)
     fun stop() {
-        println("Объект остановился")
+        println("Объект остановился meow")
     }
 }
 
