@@ -15,19 +15,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupNavigationButtons() {
-        // Кнопка перехода к калькулятору
         findViewById<Button>(R.id.btnGoToCalculator).setOnClickListener {
             val intent = Intent(this, CalculatorActivity::class.java)
             startActivity(intent)
         }
 
-        // Кнопка перехода к медиаплееру (пример)
         findViewById<Button>(R.id.btnGoToPlayer).setOnClickListener {
             val intent = Intent(this, MediaPlayerActivity::class.java)
             startActivity(intent)
         }
 
-        // Кнопка перехода к другим активностям (пример)
         findViewById<Button>(R.id.btnGoToOther).setOnClickListener {
             val intent = Intent(this, OtherActivity::class.java)
             startActivity(intent)
