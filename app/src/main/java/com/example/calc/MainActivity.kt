@@ -20,10 +20,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        findViewById<Button>(R.id.btnGoToPlayer).setOnClickListener {
-            val intent = Intent(this, MediaPlayerActivity::class.java)
-            startActivity(intent)
-        }
+    findViewById<Button>(R.id.btnGoToPlayer).setOnClickListener {
+        val intent = Intent(this, MediaPlayerActivity::class.java)
+        startActivity(intent)
+    }
 
         findViewById<Button>(R.id.btnGoToOther).setOnClickListener {
             val intent = Intent(this, OtherActivity::class.java)
