@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#f5f5f5"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Главное меню"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:layout_marginBottom="40dp" />
+
+    <Button
+        android:id="@+id/btnGoToCalculator"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Калькулятор"
+        android:textSize="18sp"
+        android:backgroundTint="#42a5f5"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnGoToPlayer"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Медиаплеер"
+        android:textSize="18sp"
+        android:backgroundTint="#66bb6a"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnGoToLocation"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Местоположение"
+        android:textSize="18sp"
+        android:backgroundTint="#ffa726"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnGoToTelephony"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Мобильные сети"
+        android:textSize="18sp"
+        android:backgroundTint="#ab47bc"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnGoToZMQ"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="ZMQ Сокеты"
+        android:textSize="18sp"
+        android:backgroundTint="#26a69a"
+        android:textColor="#ffffff" />
+
+</LinearLayout>
