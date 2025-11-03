@@ -37,12 +37,32 @@
         android:layout_marginBottom="16dp" />
 
     <Button
-        android:id="@+id/btnGoToOther"
+        android:id="@+id/btnGoToLocation"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        android:text="Другие функции"
+        android:text="Местоположение"
         android:textSize="18sp"
         android:backgroundTint="#ffa726"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnGoToTelephony"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Мобильные сети"
+        android:textSize="18sp"
+        android:backgroundTint="#ab47bc"
+        android:textColor="#ffffff"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnGoToZMQ"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="ZMQ Сокеты"
+        android:textSize="18sp"
+        android:backgroundTint="#26a69a"
         android:textColor="#ffffff" />
 
 </LinearLayout>

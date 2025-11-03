@@ -2,8 +2,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.calc">
 
+    <!-- Разрешения для Location -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    
+    <!-- Разрешения для Telephony -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Разрешения для Media Player -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    <!-- Разрешения для Интернета -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:allowBackup="true"
@@ -26,6 +39,18 @@
             
         <activity
             android:name=".MediaPlayerActivity"
+            android:exported="false" />
+            
+        <activity
+            android:name=".LocationActivity"
+            android:exported="false" />
+            
+        <activity
+            android:name=".TelephonyActivity"
+            android:exported="false" />
+            
+        <activity
+            android:name=".ZMQActivity"
             android:exported="false" />
             
     </application>
