@@ -15,38 +15,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupNavigationButtons() {
-    findViewById<Button>(R.id.btnGoToCalculator).setOnClickListener {
-        val intent = Intent(this, CalculatorActivity::class.java)
-        startActivity(intent)
-    }
+        // Only wire buttons for activities that exist in the project.
+        findViewById<Button>(R.id.btnGoToCalculator).setOnClickListener {
+            val intent = Intent(this, CalculatorActivity::class.java)
+            startActivity(intent)
+        }
 
-    findViewById<Button>(R.id.btnGoToPlayer).setOnClickListener {
-        val intent = Intent(this, MediaPlayerActivity::class.java)
-        startActivity(intent)
-    }
+        findViewById<Button>(R.id.btnGoToPlayer).setOnClickListener {
+            val intent = Intent(this, MediaPlayerActivity::class.java)
+            startActivity(intent)
+        }
 
-    findViewById<Button>(R.id.btnGoToLocation).setOnClickListener {
-        val intent = Intent(this, LocationActivity::class.java)
-        startActivity(intent)
-    }
-
-    findViewById<Button>(R.id.btnGoToTelephony).setOnClickListener {
-        val intent = Intent(this, TelephonyActivity::class.java)
-        startActivity(intent)
-    }
-
-    findViewById<Button>(R.id.btnGoToZMQ).setOnClickListener {
-        val intent = Intent(this, ZMQActivity::class.java)
-        startActivity(intent)
-    }
-}
-    findViewById<Button>(R.id.btnGoToPlayer).setOnClickListener {
-        val intent = Intent(this, MediaPlayerActivity::class.java)
-        startActivity(intent)
-    }
-
-        findViewById<Button>(R.id.btnGoToOther).setOnClickListener {
-            val intent = Intent(this, OtherActivity::class.java)
+        findViewById<Button>(R.id.btnGoToLocation).setOnClickListener {
+            val intent = Intent(this, LocationActivity::class.java)
             startActivity(intent)
         }
     }

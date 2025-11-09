@@ -159,7 +159,7 @@ class LocationActivity : AppCompatActivity(), LocationListener {
             longitude = location.longitude,
             altitude = location.altitude,
             time = location.time,
-            provider = location.provider
+            provider = location.provider ?: "unknown"
         )
 
         val jsonString = gson.toJson(locationData)
