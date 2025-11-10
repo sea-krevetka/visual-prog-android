@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
 import android.os.Bundle
+import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
@@ -18,6 +19,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.io.FileOutputStream
+import java.io.InputStream
 
 class MediaPlayerActivity : AppCompatActivity() {
 
@@ -110,13 +113,16 @@ class MediaPlayerActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val permissions = arrayOf(
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
+        // On Android 13+ use READ_MEDIA_AUDIO for audio files; older versions use READ_EXTERNAL_STORAGE
+        val readPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) 
-            != PackageManager.PERMISSION_GRANTED) {
+        val permissions = arrayOf(readPermission)
+
+        if (ContextCompat.checkSelfPermission(this, readPermission) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_PERMISSION_CODE)
         } else {
             loadMusicFiles()
@@ -144,14 +150,80 @@ class MediaPlayerActivity : AppCompatActivity() {
 
         findMusicFiles(storageDir, musicFiles)
 
+        // If no files found on external storage, try bundled assets or raw resources
         if (musicFiles.isEmpty()) {
-            Toast.makeText(this, "No music files found", Toast.LENGTH_SHORT).show()
+            val bundled = loadBundledMusic()
+            if (bundled.isEmpty()) {
+                Toast.makeText(this, "No music files found", Toast.LENGTH_SHORT).show()
+            } else {
+                musicFiles.addAll(bundled)
+            }
         }
 
         val adapter = MusicAdapter(musicFiles) { file ->
             playSelectedMusic(file)
         }
         recyclerView.adapter = adapter
+    }
+
+    private fun loadBundledMusic(): List<File> {
+        val result = mutableListOf<File>()
+
+        // Try assets/music first
+        try {
+            val assetList = assets.list("music")
+            if (assetList != null && assetList.isNotEmpty()) {
+                val outDir = File(cacheDir, "bundled_music")
+                if (!outDir.exists()) outDir.mkdirs()
+                assetList.forEach { name ->
+                    try {
+                        val input: InputStream = assets.open("music/$name")
+                        val outFile = File(outDir, name)
+                        copyStreamToFile(input, outFile)
+                        result.add(outFile)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+                if (result.isNotEmpty()) return result
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Fallback: load from res/raw (use reflection to enumerate R.raw fields)
+        try {
+            val rawClass = R.raw::class.java
+            val fields = rawClass.fields
+            if (fields.isNotEmpty()) {
+                val outDir = File(cacheDir, "bundled_music")
+                if (!outDir.exists()) outDir.mkdirs()
+                for (field in fields) {
+                    try {
+                        val resId = field.getInt(null)
+                        val name = field.name
+                        val input = resources.openRawResource(resId)
+                        val outFile = File(outDir, "$name.mp3")
+                        copyStreamToFile(input, outFile)
+                        result.add(outFile)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return result
+    }
+
+    private fun copyStreamToFile(input: InputStream, outFile: File) {
+        input.use { inputStream ->
+            FileOutputStream(outFile).use { output ->
+                inputStream.copyTo(output)
+            }
+        }
     }
 
     private fun findMusicFiles(directory: File, musicFiles: MutableList<File>) {
