@@ -15,7 +15,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupNavigationButtons() {
-        // Only wire buttons for activities that exist in the project.
         findViewById<Button>(R.id.btnGoToCalculator).setOnClickListener {
             val intent = Intent(this, CalculatorActivity::class.java)
             startActivity(intent)

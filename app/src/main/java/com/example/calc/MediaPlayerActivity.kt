@@ -160,7 +160,6 @@ class MediaPlayerActivity : AppCompatActivity() {
                 val files = directory.listFiles()
                 files?.forEach { file ->
                     if (file.isDirectory) {
-                        // Рекурсивный поиск в поддиректориях
                         findMusicFiles(file, musicFiles)
                     } else {
                         if (isMusicFile(file)) {
