@@ -1,15 +1,16 @@
-package com.example.calc
+package com.example.calc.ui.adapter
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import java.io.File
+import com.example.calc.R
+import com.example.calc.data.model.MusicFile
 
 class MusicAdapter(
-    private val musicFiles: List<File>,
-    private val onItemClick: (File) -> Unit
+    private val musicFiles: List<MusicFile>,
+    private val onItemClick: (MusicFile) -> Unit
 ) : RecyclerView.Adapter<MusicAdapter.MusicViewHolder>() {
 
     class MusicViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -27,11 +28,9 @@ class MusicAdapter(
         val file = musicFiles[position]
         
         holder.tvFileName.text = file.name
-        holder.tvFileInfo.text = "Size: ${formatFileSize(file.length())}"
+        holder.tvFileInfo.text = "Size: ${formatFileSize(file.size)}"
 
-        holder.itemView.setOnClickListener {
-            onItemClick(file)
-        }
+        holder.itemView.setOnClickListener { onItemClick(file) }
     }
 
     override fun getItemCount(): Int = musicFiles.size
