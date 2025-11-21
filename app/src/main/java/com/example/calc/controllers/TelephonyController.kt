@@ -12,6 +12,8 @@ import android.telephony.SignalStrength
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.Log
+import com.example.calc.data.model.TelephonyData
+import com.example.calc.data.repository.TelephonyRepository
 import androidx.core.content.ContextCompat
 
 class TelephonyController(private val context: Context) {
@@ -24,6 +26,8 @@ class TelephonyController(private val context: Context) {
     private val TAG = "TelephonyController"
 
     private val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+
+    private val telephonyRepository = TelephonyRepository(context)
 
     private val handler = Handler(Looper.getMainLooper())
     private val refreshIntervalMs = 60_000L
@@ -60,6 +64,14 @@ class TelephonyController(private val context: Context) {
             "No cell info available"
         } else {
             cellInfoList.joinToString(separator = "\n\n") { it.toString() }
+        }
+
+        // Save telephony snapshot as JSON file
+        try {
+            val telephonyData = TelephonyData(timestamp = System.currentTimeMillis(), summary = text)
+            telephonyRepository.saveTelephony(telephonyData)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to save telephony data", e)
         }
 
         listener.onCellInfo(text)

@@ -22,7 +22,7 @@ class LocationController(
 
     private val locationManager: LocationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    private val locationRepository = LocationRepository()
+    private val locationRepository = LocationRepository(context)
 
     interface LocationListener {
         fun onLocationUpdated(locationData: LocationData)

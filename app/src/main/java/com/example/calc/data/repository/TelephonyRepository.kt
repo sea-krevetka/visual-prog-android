@@ -1,7 +1,7 @@
 package com.example.calc.data.repository
 
 import android.content.Context
-import com.example.calc.data.model.LocationData
+import com.example.calc.data.model.TelephonyData
 import com.google.gson.Gson
 import java.io.File
 import java.io.FileOutputStream
@@ -9,16 +9,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class LocationRepository(private val context: Context) {
+class TelephonyRepository(private val context: Context) {
     private val gson = Gson()
 
-    fun saveLocation(locationData: LocationData) {
-        val jsonString = gson.toJson(locationData)
+    fun saveTelephony(telephonyData: TelephonyData) {
+        val jsonString = gson.toJson(telephonyData)
         try {
-            val dir = File(context.filesDir, "lla")
+            val dir = File(context.filesDir, "telephony")
             if (!dir.exists()) dir.mkdirs()
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmssSSS", Locale.getDefault()).format(Date())
-            val file = File(dir, "lla_$timestamp.json")
+            val file = File(dir, "telephony_$timestamp.json")
             FileOutputStream(file).use { fos ->
                 fos.write(jsonString.toByteArray())
             }
