@@ -7,7 +7,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.calc.R
-import com.example.calc.controller.LocationController
+import com.example.calc.controllers.LocationController
 import com.example.calc.data.model.LocationData
 
 class LocationActivity : AppCompatActivity(), LocationController.LocationListener {

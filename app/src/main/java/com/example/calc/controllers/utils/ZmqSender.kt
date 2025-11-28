@@ -1,4 +1,4 @@
-package com.example.calc.controller.utils
+package com.example.calc.controllers.utils
 
 import android.content.Context
 import android.util.Log

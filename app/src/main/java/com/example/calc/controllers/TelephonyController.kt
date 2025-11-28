@@ -1,4 +1,4 @@
-package com.example.calc.controller
+package com.example.calc.controllers
 
 import android.app.Activity
 import android.content.Context
@@ -14,8 +14,8 @@ import android.telephony.TelephonyManager
 import android.util.Log
 import com.example.calc.data.model.TelephonyData
 import com.example.calc.data.repository.TelephonyRepository
-import com.example.calc.controller.utils.ZmqSender
-import com.example.calc.controller.utils.ClientIdUtil
+import com.example.calc.controllers.utils.ZmqSender
+import com.example.calc.controllers.utils.ClientIdUtil
 import com.google.gson.Gson
 import androidx.core.content.ContextCompat
 

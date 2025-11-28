@@ -10,7 +10,7 @@ import android.widget.TextView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import com.example.calc.controller.TelephonyController
+import com.example.calc.controllers.TelephonyController
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat

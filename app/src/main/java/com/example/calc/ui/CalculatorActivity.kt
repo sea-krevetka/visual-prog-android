@@ -7,7 +7,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.calc.R
-import com.example.calc.controller.CalculatorController
+import com.example.calc.controllers.CalculatorController
 
 class CalculatorActivity : AppCompatActivity() {
 
