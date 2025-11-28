@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
+import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
 import com.example.calc.controller.TelephonyController
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +25,10 @@ class TelephonyActivity : AppCompatActivity() {
     private val TAG = "TelephonyActivity"
 
     private lateinit var tvCellInfo: TextView
+    private lateinit var etZmqHost: EditText
+    private lateinit var etZmqPort: EditText
+    private lateinit var btnZmqToggle: Button
+    private lateinit var btnShowSent: Button
     private lateinit var telephonyController: TelephonyController
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,12 +37,46 @@ class TelephonyActivity : AppCompatActivity() {
 
         initializeViews()
         telephonyController = TelephonyController(this)
+        initializeZmqViews()
 
         checkPermissions()
     }
 
     private fun initializeViews() {
         tvCellInfo = findViewById(R.id.tvCellInfo)
+    }
+
+    private fun initializeZmqViews() {
+        etZmqHost = findViewById(R.id.etZmqHost)
+        etZmqPort = findViewById(R.id.etZmqPort)
+        btnZmqToggle = findViewById(R.id.btnZmqToggle)
+
+        etZmqHost.setText("127.0.0.1")
+        etZmqPort.setText("2222")
+
+        btnZmqToggle.setOnClickListener {
+            val enabled = btnZmqToggle.text.toString().contains("Enable", true).not()
+            if (enabled.not()) {
+                // Currently disabled; enable send
+                val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
+                val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
+                try {
+                    telephonyController.enableZmq(host, port)
+                    btnZmqToggle.text = "Disable Send"
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Failed to enable ZMQ: ${t.message}")
+                    Toast.makeText(this, "Failed to enable ZMQ", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                // Disable send
+                telephonyController.disableZmq()
+                btnZmqToggle.text = "Enable Send"
+            }
+        }
+        btnShowSent = findViewById(R.id.btnShowSent)
+        btnShowSent.setOnClickListener {
+            startActivity(android.content.Intent(this, SentSnapshotsActivity::class.java))
+        }
     }
 
     private fun checkPermissions() {

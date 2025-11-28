@@ -14,6 +14,9 @@ import android.telephony.TelephonyManager
 import android.util.Log
 import com.example.calc.data.model.TelephonyData
 import com.example.calc.data.repository.TelephonyRepository
+import com.example.calc.controller.utils.ZmqSender
+import com.example.calc.controller.utils.ClientIdUtil
+import com.google.gson.Gson
 import androidx.core.content.ContextCompat
 
 class TelephonyController(private val context: Context) {
@@ -28,6 +31,7 @@ class TelephonyController(private val context: Context) {
     private val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
 
     private val telephonyRepository = TelephonyRepository(context)
+    private val locationRepository = com.example.calc.data.repository.LocationRepository(context)
 
     private val handler = Handler(Looper.getMainLooper())
     private val refreshIntervalMs = 60_000L
@@ -41,6 +45,12 @@ class TelephonyController(private val context: Context) {
     }
 
     private var listenerForRun: TelephonyListener? = null
+
+    private var zmqSender: ZmqSender? = null
+    private var zmqEnabled = false
+    private var zmqHost = "127.0.0.1"
+    private var zmqPort = 2222
+    private val gson = Gson()
 
     private var phoneStateListener: PhoneStateListener? = null
     private var telephonyCallback: TelephonyCallback? = null
@@ -70,6 +80,20 @@ class TelephonyController(private val context: Context) {
         try {
             val telephonyData = TelephonyData(timestamp = System.currentTimeMillis(), summary = text)
             telephonyRepository.saveTelephony(telephonyData)
+            if (zmqEnabled) {
+                // Attach client_id and send JSON to ZMQ server
+                val wrapper = mapOf(
+                    "client_id" to ClientIdUtil.getClientId(context),
+                    "telephony" to telephonyData,
+                    "location" to locationRepository.getLastLocation()
+                )
+                val json = gson.toJson(wrapper)
+                try {
+                    zmqSender?.sendAsync(json)
+                } catch (t: Throwable) {
+                    // don't break main flow
+                }
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to save telephony data", e)
         }
@@ -133,5 +157,32 @@ class TelephonyController(private val context: Context) {
         }
 
         listenerForRun = null
+        disableZmq()
+    }
+
+    fun enableZmq(host: String, port: Int) {
+        zmqHost = host
+        zmqPort = port
+        try {
+            val endpoint = "tcp://$host:$port"
+            if (zmqSender == null) {
+                zmqSender = ZmqSender(context, endpoint)
+            }
+            zmqSender?.start()
+            zmqEnabled = true
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to enable ZMQ: ${t.message}")
+            zmqEnabled = false
+        }
+    }
+
+    fun disableZmq() {
+        zmqEnabled = false
+        try {
+            zmqSender?.stop()
+            zmqSender = null
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to disable ZMQ: ${t.message}")
+        }
     }
 }

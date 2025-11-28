@@ -4,7 +4,47 @@
     android:layout_height="match_parent"
     android:padding="16dp">
 
-    <TextView
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="8dp">
+
+            <EditText
+                android:id="@+id/etZmqHost"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="ZMQ Host (e.g., 127.0.0.1)" />
+
+            <EditText
+                android:id="@+id/etZmqPort"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:ems="6"
+                android:hint="2222" />
+
+            <Button
+                android:id="@+id/btnZmqToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enable Send" />
+        
+            <Button
+                android:id="@+id/btnShowSent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Show Sent" />
+        </LinearLayout>
+
+        <TextView
         android:id="@+id/tvCellInfo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -12,5 +52,7 @@
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:lineSpacingExtra="4dp"
         android:paddingBottom="16dp" />
+
+    </LinearLayout>
 
 </ScrollView>

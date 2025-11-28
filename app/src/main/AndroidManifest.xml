@@ -49,6 +49,10 @@
         <activity
             android:name=".ZMQActivity"
             android:exported="false" />
+        
+        <activity
+            android:name=".SentSnapshotsActivity"
+            android:exported="false" />
             
     </application>
 </manifest>
