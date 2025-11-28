@@ -423,3 +423,23 @@ override fun onResume() {
 }
 ```
 
+## Python ZMQ server and PostgreSQL saving
+
+This project includes a simple ZeroMQ server in `python_server/zmq_server.py`. It saves incoming JSON payloads to per-client directories (under `python_server/data/clients/<client_id>`) by default and can also save payloads into PostgreSQL if configured.
+
+To enable save-to-DB, run the server with the `--save-to-db` flag and provide DB parameters either via environment variables (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`) or via flags `--db-host`, `--db-port`, `--db-name`, `--db-user`, `--db-pass`.
+
+Example:
+
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=test_db_from_psql
+export DB_USER=postgres
+export DB_PASS=postgres1234
+python python_server/zmq_server.py --save-to-db
+```
+
+The server will create the table `telephony_packets` if it doesn't exist. Fields saved to the table include `client_id`, `telephony` (JSONB), `location` (JSONB), `raw` (entire JSON), and `telephony_ts` (timestamp in ms).
+
+
