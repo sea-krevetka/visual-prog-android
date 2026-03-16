@@ -14,10 +14,10 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.calc.R
-import com.example.calc.controller.MediaPlayerController
+import com.example.calc.controllers.MediaPlayerController
 import com.example.calc.data.model.MusicFile
 import com.example.calc.data.repository.MusicRepository
-import java.io.File
+import com.example.calc.ui.adapters.MusicAdapter
 
 class MediaPlayerActivity : AppCompatActivity(), MediaPlayerController.PlayerListener {
 
@@ -95,8 +95,8 @@ class MediaPlayerActivity : AppCompatActivity(), MediaPlayerController.PlayerLis
     }
 
     private fun checkPermissions() {
-        val permissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) 
+        val permissions = arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) 
             != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_PERMISSION_CODE)
         } else {

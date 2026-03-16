@@ -1,4 +1,4 @@
-package com.example.calc.controller
+package com.example.calc.controllers
 
 import android.Manifest
 import android.content.Context
@@ -7,8 +7,10 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Looper
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.example.calc.data.model.LocationData
 import com.example.calc.data.repository.LocationRepository
 import java.text.SimpleDateFormat
@@ -17,12 +19,16 @@ import java.util.Locale
 
 class LocationController(
     private val context: Context,
-    private val listener: LocationListener
+    private val mainLooper: Looper
 ) : LocationListener {
 
     private val locationManager: LocationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    private val locationRepository = LocationRepository()
+    private val locationRepository = LocationRepository(context)
+    private val handlerThread = HandlerThread("LocationThread").apply { start() }
+    private val backgroundHandler = Handler(handlerThread.looper)
+    private val mainHandler = Handler(mainLooper)
+    private val listeners = mutableListOf<LocationListener>()
 
     interface LocationListener {
         fun onLocationUpdated(locationData: LocationData)
@@ -30,60 +36,38 @@ class LocationController(
         fun onLocationError(message: String)
     }
 
-    fun checkLocationPermissions() {
-        val permissions = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
+    fun addListener(listener: LocationListener) {
+        listeners.add(listener)
+    }
 
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            listener.onLocationStatusChanged("Requesting location permissions...")
-        } else {
-            startLocationUpdates()
-        }
+    fun removeListener(listener: LocationListener) {
+        listeners.remove(listener)
     }
 
     fun startLocationUpdates() {
-        if (!hasLocationPermission()) {
-            listener.onLocationError("Location permission not granted")
-            return
+        backgroundHandler.post {
+            if (!hasLocationPermission()) {
+                mainHandler.post { listeners.forEach { it.onLocationError("Location permission not granted") } }
+                return@post
+            }
+
+            try {
+                locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER, 1000L, 1f, this, handlerThread.looper
+                )
+                locationManager.requestLocationUpdates(
+                    LocationManager.NETWORK_PROVIDER, 1000L, 1f, this, handlerThread.looper
+                )
+                mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Location updates started") } }
+            } catch (ex: SecurityException) {
+                mainHandler.post { listeners.forEach { it.onLocationError("Failed to start location updates: ${ex.message}") } }
+            }
         }
-
-        locationManager.requestLocationUpdates(
-            LocationManager.GPS_PROVIDER,
-            1000L,
-            1f,
-            this
-        )
-
-        locationManager.requestLocationUpdates(
-            LocationManager.NETWORK_PROVIDER,
-            1000L,
-            1f,
-            this
-        )
-
-        getLastKnownLocation()
-        listener.onLocationStatusChanged("Location updates started")
     }
 
     fun stopLocationUpdates() {
-        locationManager.removeUpdates(this)
-    }
-
-    private fun getLastKnownLocation() {
-        if (!hasLocationPermission()) return
-
-        val lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
-        lastKnownLocation?.let {
-            onLocationChanged(it)
-        } ?: run {
-            listener.onLocationStatusChanged("No last known location")
-        }
+        backgroundHandler.post { locationManager.removeUpdates(this) }
+        handlerThread.quitSafely()
     }
 
     override fun onLocationChanged(location: Location) {
@@ -94,29 +78,17 @@ class LocationController(
             time = location.time,
             provider = location.provider ?: "unknown"
         )
-        
-        listener.onLocationUpdated(locationData)
         locationRepository.saveLocation(locationData)
+        mainHandler.post { listeners.forEach { it.onLocationUpdated(locationData) } }
     }
 
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
     override fun onProviderEnabled(provider: String) {
-        listener.onLocationStatusChanged("Provider enabled: $provider")
+        mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Provider enabled: $provider") } }
     }
     
     override fun onProviderDisabled(provider: String) {
-        listener.onLocationStatusChanged("Provider disabled: $provider")
-    }
-
-    fun onPermissionResult(requestCode: Int, grantResults: IntArray) {
-        if (requestCode == LOCATION_PERMISSION_CODE && grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            startLocationUpdates()
-        } else {
-            listener.onLocationError("Location permission denied")
-            getLastKnownLocation()
-        }
+        mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Provider disabled: $provider") } }
     }
 
     fun formatTime(timestamp: Long): String {
@@ -126,15 +98,13 @@ class LocationController(
 
     private fun hasLocationPermission(): Boolean {
         return ActivityCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
 
     companion object {
-        private const val LOCATION_PERMISSION_CODE = 100
+        const val LOCATION_PERMISSION_CODE = 100
     }
 }

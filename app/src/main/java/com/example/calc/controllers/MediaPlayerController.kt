@@ -1,14 +1,16 @@
-package com.example.calc.controller
+package com.example.calc.controllers
 
+import android.content.Context
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import com.example.calc.data.model.MusicFile
-import com.example.calc.utils.TimeUtils
+import com.example.calc.controllers.utils.TimeUtils
 import java.util.concurrent.TimeUnit
 
 class MediaPlayerController(
-    private val context: android.content.Context,
+    private val context: Context,
     private val listener: PlayerListener
 ) {
     private val mediaPlayer: MediaPlayer = MediaPlayer()
@@ -40,7 +42,12 @@ class MediaPlayerController(
         
         try {
             mediaPlayer.reset()
-            mediaPlayer.setDataSource(musicFile.path)
+            if (musicFile.isFromRaw) {
+                val uri = Uri.parse(musicFile.path)
+                mediaPlayer.setDataSource(context, uri)
+            } else {
+                mediaPlayer.setDataSource(musicFile.path)
+            }
             mediaPlayer.prepare()
             listener.onProgressUpdate(0, mediaPlayer.duration)
             play()

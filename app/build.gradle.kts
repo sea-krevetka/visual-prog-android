@@ -27,11 +27,9 @@ android {
         }
     }
     compileOptions {
-        // AGP 8.x and Kotlin 2.0 require Java 17
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    // Configure Kotlin compiler to target JVM 17 to match Kotlin 2.0+ and AGP requirements
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -45,6 +43,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.gson)
+    implementation("org.zeromq:jeromq:0.5.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -1,4 +1,4 @@
-package com.example.calc.controller
+package com.example.calc.controllers
 
 import java.util.Locale
 

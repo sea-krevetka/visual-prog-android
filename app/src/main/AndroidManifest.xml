@@ -8,9 +8,6 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <!-- On Android 13+ the READ_MEDIA_AUDIO permission should be declared for audio file access -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     
     <uses-permission android:name="android.permission.INTERNET" />
@@ -23,7 +20,7 @@
         android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
         
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -32,23 +29,27 @@
         </activity>
         
         <activity
-            android:name=".CalculatorActivity"
+            android:name=".ui.CalculatorActivity"
             android:exported="false" />
             
         <activity
-            android:name=".MediaPlayerActivity"
+            android:name=".ui.MediaPlayerActivity"
             android:exported="false" />
             
         <activity
-            android:name=".LocationActivity"
+            android:name=".ui.LocationActivity"
             android:exported="false" />
             
         <activity
-            android:name=".TelephonyActivity"
+            android:name=".ui.TelephonyActivity"
             android:exported="false" />
             
         <activity
-            android:name=".ZMQActivity"
+            android:name=".ui.ZMQActivity"
+            android:exported="false" />
+        
+        <activity
+            android:name=".ui.SentSnapshotsActivity"
             android:exported="false" />
             
     </application>
