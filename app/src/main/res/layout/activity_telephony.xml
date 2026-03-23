@@ -35,6 +35,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Enable Send" />
+
+            <Button
+                android:id="@+id/btnZmqUpdate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Update Endpoint" />
         
             <Button
                 android:id="@+id/btnShowSent"
@@ -52,6 +59,34 @@
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:lineSpacingExtra="4dp"
         android:paddingBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="8dp">
+
+            <Button
+                android:id="@+id/btnStartService"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Start Background" />
+
+            <Button
+                android:id="@+id/btnStopService"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Stop Background" />
+        </LinearLayout>
+
+        <com.example.calc.ui.ImPlotSignalChartView
+            android:id="@+id/chartSignal"
+            android:layout_width="match_parent"
+            android:layout_height="240dp"
+            android:layout_marginTop="8dp"
+            android:background="#121212" />
 
     </LinearLayout>
 

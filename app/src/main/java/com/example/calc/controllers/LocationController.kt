@@ -76,6 +76,7 @@ class LocationController(
             longitude = location.longitude,
             altitude = location.altitude,
             time = location.time,
+            accuracy = location.accuracy,
             provider = location.provider ?: "unknown"
         )
         locationRepository.saveLocation(locationData)

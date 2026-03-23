@@ -5,5 +5,6 @@ data class LocationData(
     val longitude: Double,
     val altitude: Double,
     val time: Long,
+    val accuracy: Float,
     val provider: String
 )

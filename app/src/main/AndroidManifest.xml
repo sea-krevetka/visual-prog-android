@@ -51,6 +51,10 @@
         <activity
             android:name=".ui.SentSnapshotsActivity"
             android:exported="false" />
+
+        <service
+            android:name=".ui.TelephonyBackgroundService"
+            android:exported="false" />
             
     </application>
 </manifest>

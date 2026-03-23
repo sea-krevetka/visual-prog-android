@@ -1,15 +1,20 @@
 package com.example.calc.ui
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import com.example.calc.controllers.TelephonyController
+import com.example.calc.data.model.TelephonyData
+import com.google.gson.Gson
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -30,15 +35,35 @@ class TelephonyActivity : AppCompatActivity() {
     private lateinit var etZmqHost: EditText
     private lateinit var etZmqPort: EditText
     private lateinit var btnZmqToggle: Button
+    private lateinit var btnZmqUpdate: Button
     private lateinit var btnShowSent: Button
-    private lateinit var telephonyController: TelephonyController
+    private lateinit var btnStartService: Button
+    private lateinit var btnStopService: Button
+    private lateinit var chartSignal: ImPlotSignalChartView
+    private val gson = Gson()
+
+    private val telemetryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE) {
+                val json = intent.getStringExtra(TelephonyBackgroundService.EXTRA_TELEMETRY_JSON)
+                json?.let {
+                    try {
+                        val data = gson.fromJson(it, TelephonyData::class.java)
+                        chartSignal.updateFromTelephonyData(data)
+                        tvCellInfo.text = "Latest sample: ${data.timestamp} | Cells ${data.cellInfo.size}"
+                    } catch (ignore: Throwable) {
+                        Log.w(TAG, "Failed to decode telemetry JSON", ignore)
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_telephony)
 
         initializeViews()
-        telephonyController = TelephonyController(this)
         initializeZmqViews()
 
         checkPermissions()
@@ -46,29 +71,36 @@ class TelephonyActivity : AppCompatActivity() {
 
     private fun initializeViews() {
         tvCellInfo = findViewById(R.id.tvCellInfo)
+        btnStartService = findViewById(R.id.btnStartService)
+        btnStopService = findViewById(R.id.btnStopService)
+        chartSignal = findViewById(R.id.chartSignal)
+
+        btnStartService.setOnClickListener { startTelephonyService() }
+        btnStopService.setOnClickListener { stopTelephonyService() }
     }
 
     private fun initializeZmqViews() {
         etZmqHost = findViewById(R.id.etZmqHost)
         etZmqPort = findViewById(R.id.etZmqPort)
         btnZmqToggle = findViewById(R.id.btnZmqToggle)
+        btnZmqUpdate = findViewById(R.id.btnZmqUpdate)
+        btnShowSent = findViewById(R.id.btnShowSent)
 
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         etZmqHost.setText(prefs.getString(PREF_HOST, "192.168.62.19")) // Default to a common LAN IP
         etZmqPort.setText("2222")
 
         if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
-            val host = etZmqHost.text.toString()
-            val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
-            telephonyController.enableZmq(host, port)
             btnZmqToggle.text = "Disable Send"
         }
 
         btnZmqToggle.setOnClickListener {
             val isCurrentlyEnabled = btnZmqToggle.text.toString().contains("Disable", true)
+            val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
+            val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
             if (isCurrentlyEnabled) {
                 // Disable send
-                telephonyController.disableZmq()
+                sendZmqCommand(false, host, port)
                 btnZmqToggle.text = "Enable Send"
                 with(prefs.edit()) {
                     putBoolean(PREF_SEND_ENABLED, false)
@@ -76,27 +108,62 @@ class TelephonyActivity : AppCompatActivity() {
                 }
             } else {
                 // Enable send
-                val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
-                val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
-                try {
-                    telephonyController.enableZmq(host, port)
-                    btnZmqToggle.text = "Disable Send"
-                    // Save the state
-                    with(prefs.edit()) {
-                        putString(PREF_HOST, host)
-                        putBoolean(PREF_SEND_ENABLED, true)
-                        apply()
-                    }
-                } catch (t: Throwable) {
-                    Log.w(TAG, "Failed to enable ZMQ: ${t.message}")
-                    Toast.makeText(this, "Failed to enable ZMQ", Toast.LENGTH_SHORT).show()
+                sendZmqCommand(true, host, port)
+                btnZmqToggle.text = "Disable Send"
+                with(prefs.edit()) {
+                    putString(PREF_HOST, host)
+                    putBoolean(PREF_SEND_ENABLED, true)
+                    apply()
                 }
             }
         }
-        btnShowSent = findViewById(R.id.btnShowSent)
-        btnShowSent.setOnClickListener {
-            startActivity(android.content.Intent(this, SentSnapshotsActivity::class.java))
+
+        btnZmqUpdate.setOnClickListener {
+            val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
+            val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
+            if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
+                sendZmqCommand(true, host, port)
+                Toast.makeText(this, "ZMQ endpoint updated: $host:$port", Toast.LENGTH_SHORT).show()
+                with(prefs.edit()) {
+                    putString(PREF_HOST, host)
+                    apply()
+                }
+            } else {
+                Toast.makeText(this, "Enable send first", Toast.LENGTH_SHORT).show()
+            }
         }
+
+        btnShowSent.setOnClickListener {
+            startActivity(Intent(this, SentSnapshotsActivity::class.java))
+        }
+    }
+
+    private fun startTelephonyService() {
+        val intent = Intent(this, TelephonyBackgroundService::class.java)
+        intent.action = TelephonyBackgroundService.ACTION_START
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, intent)
+        } else {
+            startService(intent)
+        }
+        Toast.makeText(this, "Background service started", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun stopTelephonyService() {
+        val intent = Intent(this, TelephonyBackgroundService::class.java).apply {
+            action = TelephonyBackgroundService.ACTION_STOP
+        }
+        startService(intent)
+        Toast.makeText(this, "Background service stopped", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun sendZmqCommand(enable: Boolean, host: String, port: Int) {
+        val intent = Intent(this, TelephonyBackgroundService::class.java).apply {
+            action = if (enable) TelephonyBackgroundService.ACTION_ENABLE_ZMQ else TelephonyBackgroundService.ACTION_DISABLE_ZMQ
+            putExtra(TelephonyBackgroundService.EXTRA_ZMQ_HOST, host)
+            putExtra(TelephonyBackgroundService.EXTRA_ZMQ_PORT, port)
+        }
+        startService(intent)
     }
 
     private fun checkPermissions() {
@@ -120,7 +187,7 @@ class TelephonyActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_PERMISSION_CODE) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                if (!isFinishing) startControllerUpdates()
+                startTelephonyService()
             } else {
                 Log.d(TAG, "Required permissions not granted: ${permissions.joinToString()}")
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
@@ -130,31 +197,15 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        registerReceiver(telemetryReceiver, IntentFilter(TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE))
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            startControllerUpdates()
+            startTelephonyService()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        stopControllerUpdates()
-    }
-
-    private fun startControllerUpdates() {
-        telephonyController.startUpdates(this, object : TelephonyController.TelephonyListener {
-            override fun onCellInfo(text: String) {
-                runOnUiThread { tvCellInfo.text = text }
-                Log.d(TAG, text)
-            }
-
-            override fun onError(message: String) {
-                runOnUiThread { tvCellInfo.text = message }
-                Log.w(TAG, message)
-            }
-        })
-    }
-
-    private fun stopControllerUpdates() {
-        telephonyController.stopUpdates()
+        unregisterReceiver(telemetryReceiver)
     }
 }
+
