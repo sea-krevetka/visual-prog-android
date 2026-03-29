@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.calc.R
+import com.example.calc.utils.CrashLogger
 
 class TelephonyActivity : AppCompatActivity() {
 
@@ -89,47 +90,67 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_telephony)
+        try {
+            setContentView(R.layout.activity_telephony)
+            Log.d(TAG, "Content view set")
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error setting content view: ${e.message}", e)
+            CrashLogger.logException(TAG, "onCreate setContentView failed", e)
+            finish()
+            return
+        }
 
         try {
             initializeViews()
-            initializeZmqViews()
-            checkPermissions()
+            Log.d(TAG, "Views initialized")
         } catch (e: Exception) {
-            Log.e(TAG, "Fatal error in onCreate: ${e.message}", e)
-            tvCellInfo.post {
-                tvCellInfo.text = "❌ Initialization error: ${e.message}"
-            }
-            CrashLogger.logException(TAG, "onCreate initialization failed", e)
+            Log.e(TAG, "Error initializing views: ${e.message}", e)
+            CrashLogger.logException(TAG, "initializeViews failed", e)
+            tvCellInfo.text = "❌ Error initializing views: ${e.message}"
+            finish()
+            return
+        }
+
+        try {
+            initializeZmqViews()
+            Log.d(TAG, "ZMQ views initialized")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing ZMQ views: ${e.message}", e)
+            CrashLogger.logException(TAG, "initializeZmqViews failed", e)
+            tvCellInfo.text = "❌ Error initializing ZMQ: ${e.message}"
+            finish()
+            return
+        }
+
+        try {
+            checkPermissions()
+            Log.d(TAG, "Permissions checked")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking permissions: ${e.message}", e)
+            CrashLogger.logException(TAG, "checkPermissions failed", e)
+            tvCellInfo.text = "❌ Error checking permissions: ${e.message}"
+            finish()
+            return
         }
     }
 
     private fun initializeViews() {
-        try {
-            tvCellInfo = findViewById(R.id.tvCellInfo)
-            btnServiceToggle = findViewById(R.id.btnServiceToggle)
-            chartSignal = findViewById(R.id.chartSignal)
-            
-            if (!::tvCellInfo.isInitialized || !::btnServiceToggle.isInitialized || !::chartSignal.isInitialized) {
-                throw Exception("Required views not found in layout")
-            }
+        tvCellInfo = findViewById(R.id.tvCellInfo) ?: throw Exception("tvCellInfo view not found")
+        btnServiceToggle = findViewById(R.id.btnServiceToggle) ?: throw Exception("btnServiceToggle view not found")
+        chartSignal = findViewById(R.id.chartSignal) ?: throw Exception("chartSignal view not found")
 
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            updateServiceToggleButton(prefs)
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        updateServiceToggleButton(prefs)
 
-            btnServiceToggle.setOnClickListener {
-                val isRunning = prefs.getBoolean(PREF_SERVICE_RUNNING, false)
-                if (isRunning) {
-                    stopTelephonyService(prefs)
-                } else {
-                    startTelephonyService(prefs)
-                }
+        btnServiceToggle.setOnClickListener {
+            val isRunning = prefs.getBoolean(PREF_SERVICE_RUNNING, false)
+            if (isRunning) {
+                stopTelephonyService(prefs)
+            } else {
+                startTelephonyService(prefs)
             }
-            Log.d(TAG, "Views initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing views: ${e.message}", e)
-            throw e
         }
+        Log.d(TAG, "Views initialized successfully")
     }
 
     private fun updateServiceToggleButton(prefs: android.content.SharedPreferences) {
@@ -144,79 +165,70 @@ class TelephonyActivity : AppCompatActivity() {
     }
 
     private fun initializeZmqViews() {
-        try {
-            etZmqHost = findViewById(R.id.etZmqHost)
-            etZmqPort = findViewById(R.id.etZmqPort)
-            btnZmqToggle = findViewById(R.id.btnZmqToggle)
-            btnZmqUpdate = findViewById(R.id.btnZmqUpdate)
-            btnShowSent = findViewById(R.id.btnShowSent)
-            btnRefreshData = findViewById(R.id.btnRefreshData)
+        etZmqHost = findViewById(R.id.etZmqHost) ?: throw Exception("etZmqHost view not found")
+        etZmqPort = findViewById(R.id.etZmqPort) ?: throw Exception("etZmqPort view not found")
+        btnZmqToggle = findViewById(R.id.btnZmqToggle) ?: throw Exception("btnZmqToggle view not found")
+        btnZmqUpdate = findViewById(R.id.btnZmqUpdate) ?: throw Exception("btnZmqUpdate view not found")
+        btnShowSent = findViewById(R.id.btnShowSent) ?: throw Exception("btnShowSent view not found")
+        btnRefreshData = findViewById(R.id.btnRefreshData) ?: throw Exception("btnRefreshData view not found")
 
-            if (!::etZmqHost.isInitialized || !::btnZmqToggle.isInitialized) {
-                throw Exception("Required ZMQ views not found in layout")
-            }
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        etZmqHost.setText(prefs.getString(PREF_HOST, "192.168.62.19")) // Default to a common LAN IP
+        etZmqPort.setText("2222")
 
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            etZmqHost.setText(prefs.getString(PREF_HOST, "192.168.62.19")) // Default to a common LAN IP
-            etZmqPort.setText("2222")
-
-            if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
-                btnZmqToggle.text = "Disable Send"
-            }
-
-            btnRefreshData.setOnClickListener {
-                Toast.makeText(this, "Refreshing data...", Toast.LENGTH_SHORT).show()
-                loadAndDisplaySavedData()
-            }
-
-            btnZmqToggle.setOnClickListener {
-                val isCurrentlyEnabled = btnZmqToggle.text.toString().contains("Disable", true)
-                val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
-                val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
-                if (isCurrentlyEnabled) {
-                    // Disable send
-                    sendZmqCommand(false, host, port)
-                    btnZmqToggle.text = "Enable Send"
-                    with(prefs.edit()) {
-                        putBoolean(PREF_SEND_ENABLED, false)
-                        apply()
-                    }
-                } else {
-                    // Enable send
-                    sendZmqCommand(true, host, port)
-                    btnZmqToggle.text = "Disable Send"
-                    with(prefs.edit()) {
-                        putString(PREF_HOST, host)
-                        putBoolean(PREF_SEND_ENABLED, true)
-                        apply()
-                    }
-                }
-            }
-
-            btnZmqUpdate.setOnClickListener {
-                val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
-                val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
-                if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
-                    sendZmqCommand(true, host, port)
-                    Toast.makeText(this, "ZMQ endpoint updated: $host:$port", Toast.LENGTH_SHORT).show()
-                    with(prefs.edit()) {
-                        putString(PREF_HOST, host)
-                        apply()
-                    }
-                } else {
-                    Toast.makeText(this, "Enable send first", Toast.LENGTH_SHORT).show()
-                }
-            }
-
-            btnShowSent.setOnClickListener {
-                startActivity(Intent(this, SentSnapshotsActivity::class.java))
-            }
-            
-            Log.d(TAG, "ZMQ views initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing ZMQ views: ${e.message}", e)
-            throw e
+        if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
+            btnZmqToggle.text = "Disable Send"
         }
+
+        btnRefreshData.setOnClickListener {
+            Toast.makeText(this, "Refreshing data...", Toast.LENGTH_SHORT).show()
+            loadAndDisplaySavedData()
+        }
+
+        btnZmqToggle.setOnClickListener {
+            val isCurrentlyEnabled = btnZmqToggle.text.toString().contains("Disable", true)
+            val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
+            val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
+            if (isCurrentlyEnabled) {
+                // Disable send
+                sendZmqCommand(false, host, port)
+                btnZmqToggle.text = "Enable Send"
+                with(prefs.edit()) {
+                    putBoolean(PREF_SEND_ENABLED, false)
+                    apply()
+                }
+            } else {
+                // Enable send
+                sendZmqCommand(true, host, port)
+                btnZmqToggle.text = "Disable Send"
+                with(prefs.edit()) {
+                    putString(PREF_HOST, host)
+                    putBoolean(PREF_SEND_ENABLED, true)
+                    apply()
+                }
+            }
+        }
+
+        btnZmqUpdate.setOnClickListener {
+            val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
+            val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
+            if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
+                sendZmqCommand(true, host, port)
+                Toast.makeText(this, "ZMQ endpoint updated: $host:$port", Toast.LENGTH_SHORT).show()
+                with(prefs.edit()) {
+                    putString(PREF_HOST, host)
+                    apply()
+                }
+            } else {
+                Toast.makeText(this, "Enable send first", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        btnShowSent.setOnClickListener {
+            startActivity(Intent(this, SentSnapshotsActivity::class.java))
+        }
+        
+        Log.d(TAG, "ZMQ views initialized successfully")
     }
 
     private fun startTelephonyService(prefs: android.content.SharedPreferences) {
@@ -296,16 +308,13 @@ class TelephonyActivity : AppCompatActivity() {
             // Android 13+ requires READ_PHONE_NUMBERS for detailed phone state
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED) {
-                    // READ_PHONE_NUMBERS might not be available on all devices, don't fail
-                    try {
-                        needed.add(Manifest.permission.READ_PHONE_NUMBERS)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "READ_PHONE_NUMBERS not available on this device")
-                    }
+                    needed.add(Manifest.permission.READ_PHONE_NUMBERS)
                 }
             }
 
+            Log.d(TAG, "Permissions needed: ${needed.size}")
             if (needed.isNotEmpty()) {
+                Log.d(TAG, "Requesting permissions: ${needed.joinToString()}")
                 ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQUEST_PERMISSION_CODE)
             } else {
                 // All permissions already granted - auto-start service
