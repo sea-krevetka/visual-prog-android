@@ -44,17 +44,44 @@ class TelephonyActivity : AppCompatActivity() {
 
     private val telemetryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE) {
-                val json = intent.getStringExtra(TelephonyBackgroundService.EXTRA_TELEMETRY_JSON)
-                json?.let {
-                    try {
-                        val data = gson.fromJson(it, TelephonyData::class.java)
-                        chartSignal.updateFromTelephonyData(data)
-                        tvCellInfo.text = "Latest sample: ${data.timestamp} | Cells ${data.cellInfo.size}"
-                    } catch (ignore: Throwable) {
-                        Log.w(TAG, "Failed to decode telemetry JSON", ignore)
+            try {
+                if (intent?.action == TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE) {
+                    val json = intent.getStringExtra(TelephonyBackgroundService.EXTRA_TELEMETRY_JSON)
+                    Log.d(TAG, "Received telemetry broadcast: ${json?.take(100)}...")
+                    
+                    json?.let {
+                        try {
+                            val data = gson.fromJson(it, TelephonyData::class.java)
+                            Log.d(TAG, "Parsed telemetry: ${data.cellInfo.size} cells, timestamp=${data.timestamp}")
+                            
+                            // Update chart
+                            try {
+                                chartSignal.updateFromTelephonyData(data)
+                                Log.d(TAG, "Chart updated successfully")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to update chart: ${e.message}", e)
+                            }
+                            
+                            // Update summary text
+                            tvCellInfo.post {
+                                tvCellInfo.text = "✓ Sample: ${data.timestamp} | ${data.cellInfo.size} cells | " +
+                                    "Lat: ${String.format("%.4f", data.location?.latitude ?: 0.0)}"
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to decode telemetry JSON: ${e.message}", e)
+                            tvCellInfo.post {
+                                tvCellInfo.text = "Error parsing telemetry: ${e.message}"
+                            }
+                        }
+                    } ?: run {
+                        Log.w(TAG, "Received null JSON in telemetry broadcast")
+                        tvCellInfo.post {
+                            tvCellInfo.text = "Error: No JSON data in broadcast"
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Fatal error in BroadcastReceiver: ${e.message}", e)
             }
         }
     }

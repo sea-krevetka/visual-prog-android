@@ -49,29 +49,51 @@ class ImPlotSignalChartView @JvmOverloads constructor(
 
     @Synchronized
     fun updateFromTelephonyData(data: TelephonyData) {
+        if (data.cellInfo.isEmpty()) {
+            return
+        }
+
         val bestValues = mutableMapOf("GSM" to Float.MIN_VALUE, "LTE" to Float.MIN_VALUE, "NR" to Float.MIN_VALUE)
+        
         data.cellInfo.forEach { info ->
             val type = info.type
             val signalMap = info.signal
+            
             val value = when (type) {
-                "LTE" -> (signalMap["rsrp"] as? Number)?.toFloat()
-                    ?: (signalMap["rssi"] as? Number)?.toFloat() ?: Float   .MIN_VALUE
-                "GSM" -> (signalMap["dbm"] as? Number)?.toFloat() ?: Float.MIN_VALUE
-                "NR" -> (signalMap["ssRsrp"] as? Number)?.toFloat() ?: Float.MIN_VALUE
+                "LTE" -> {
+                    (signalMap["rsrp"] as? Number)?.toFloat()
+                        ?: (signalMap["rssi"] as? Number)?.toFloat()
+                        ?: Float.MIN_VALUE
+                }
+                "GSM" -> {
+                    (signalMap["dbm"] as? Number)?.toFloat()
+                        ?: (signalMap["asuLevel"] as? Number)?.toFloat()
+                        ?: Float.MIN_VALUE
+                }
+                "NR" -> {
+                    (signalMap["ssRsrp"] as? Number)?.toFloat()
+                        ?: Float.MIN_VALUE
+                }
                 else -> Float.MIN_VALUE
             }
-            if (value != Float.MIN_VALUE) {
-                bestValues[type] = maxOf(bestValues[type] ?: Float.MIN_VALUE, value)
+            
+            if (value != Float.MIN_VALUE && value > -200f && value < 0f) {
+                val current = bestValues[type] ?: Float.MIN_VALUE
+                bestValues[type] = maxOf(current, value)
             }
         }
 
+        var hasData = false
         bestValues.forEach { (type, valNum) ->
             if (valNum != Float.MIN_VALUE) {
                 pushSample(type, valNum)
+                hasData = true
             }
         }
 
-        postInvalidateOnAnimation()
+        if (hasData) {
+            postInvalidateOnAnimation()
+        }
     }
 
     @Synchronized

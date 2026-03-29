@@ -2,91 +2,197 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:padding="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TELEPATHY TELEMETRY MONITOR"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#00BCD4"
+            android:paddingBottom="12dp" />
+
+        <!-- Server Configuration Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Server Configuration"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:paddingBottom="8dp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingBottom="8dp">
-
             <EditText
                 android:id="@+id/etZmqHost"
                 android:layout_width="0dp"
                 android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:hint="ZMQ Host (e.g., 127.0.0.1)" />
+                android:layout_height="48dp"
+                android:hint="Server IP (e.g., 192.168.1.100)"
+                android:inputType="text"
+                android:paddingStart="12dp"
+                android:background="@android:drawable/edit_text" />
 
             <EditText
                 android:id="@+id/etZmqPort"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="80dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:hint="Port"
+                android:text="2222"
                 android:inputType="number"
-                android:ems="6"
-                android:hint="2222" />
+                android:paddingStart="12dp"
+                android:background="@android:drawable/edit_text" />
+        </LinearLayout>
+
+        <!-- ZMQ Control Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp">
 
             <Button
                 android:id="@+id/btnZmqToggle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Enable Send" />
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="44dp"
+                android:layout_marginEnd="4dp"
+                android:text="Enable Send"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/btnZmqUpdate"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Update Endpoint" />
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="44dp"
+                android:layout_marginEnd="4dp"
+                android:text="Update"
+                android:textSize="12sp" />
         
             <Button
                 android:id="@+id/btnShowSent"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="Show Sent" />
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="44dp"
+                android:text="Sent Log"
+                android:textSize="12sp" />
         </LinearLayout>
 
+        <!-- Service Control Section -->
         <TextView
-        android:id="@+id/tvCellInfo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Loading cell info..."
-        android:textAppearance="?android:attr/textAppearanceSmall"
-        android:lineSpacingExtra="4dp"
-        android:paddingBottom="16dp" />
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Background Service Control"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:paddingBottom="8dp">
+            android:paddingBottom="12dp">
 
             <Button
                 android:id="@+id/btnStartService"
                 android:layout_width="0dp"
                 android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="Start Background" />
+                android:layout_height="44dp"
+                android:layout_marginEnd="4dp"
+                android:text="▶ START SERVICE"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btnStopService"
                 android:layout_width="0dp"
                 android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="Stop Background" />
+                android:layout_height="44dp"
+                android:text="⏹ STOP SERVICE"
+                android:textSize="12sp"
+                android:textStyle="bold" />
         </LinearLayout>
+
+        <!-- Status Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Status"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:paddingBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvCellInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⌛ Waiting for data...\n\nSteps:\n1. Enter server IP (your PC)\n2. Click START SERVICE\n3. Click ENABLE SEND\n4. Watch the graph update"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textColor="#FFFFFF"
+            android:lineSpacingExtra="4dp"
+            android:paddingBottom="12dp"
+            android:paddingTop="8dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:background="#1E1E1E" />
+
+        <!-- Chart Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Signal Strength Chart (dBm)"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:paddingBottom="8dp" />
 
         <com.example.calc.ui.ImPlotSignalChartView
             android:id="@+id/chartSignal"
             android:layout_width="match_parent"
-            android:layout_height="240dp"
-            android:layout_marginTop="8dp"
-            android:background="#121212" />
+            android:layout_height="300dp"
+            android:layout_marginTop="4dp"
+            android:background="#0A0E27" />
+
+        <!-- Legend -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Legend:"
+                android:textStyle="bold"
+                android:textSize="12sp"
+                android:paddingBottom="6dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🟢 GSM (2G)   🔵 LTE (4G)   🟣 NR (5G)"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Scale: -140 dBm (weak) to -40 dBm (strong)"
+                android:textSize="11sp"
+                android:textColor="#999999"
+                android:paddingTop="6dp" />
+        </LinearLayout>
 
     </LinearLayout>
 
