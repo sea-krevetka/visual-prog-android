@@ -126,76 +126,107 @@ class TelephonyController(private val context: Context) {
     private fun parseCellInfoList(cellInfoList: List<CellInfo>?): List<CellInfoData> {
         if (cellInfoList.isNullOrEmpty()) return emptyList()
         return cellInfoList.mapNotNull { cellInfo ->
-            when (cellInfo) {
-                is CellInfoLte -> {
-                    val identity = cellInfo.cellIdentity
-                    val signal = cellInfo.cellSignalStrength
-                    CellInfoData(
-                        type = "LTE",
-                        identity = mapOf(
-                            "band" to identity.band,
-                            "cellIdentity" to identity.ci,
-                            "earfcn" to identity.earfcn,
-                            "mcc" to identity.mccString,
-                            "mnc" to identity.mncString,
-                            "pci" to identity.pci,
-                            "tac" to identity.tac
-                        ),
-                        signal = mapOf(
-                            "asuLevel" to signal.asuLevel,
-                            "cqi" to signal.cqi,
-                            "rsrp" to signal.rsrp,
-                            "rsrq" to signal.rsrq,
-                            "rssi" to signal.rssi,
-                            "rssnr" to signal.rssnr,
-                            "timingAdvance" to signal.timingAdvance
+            try {
+                when (cellInfo) {
+                    is CellInfoLte -> {
+                        val identity = cellInfo.cellIdentity as? CellIdentityLte ?: return@mapNotNull null
+                        val signal = cellInfo.cellSignalStrength as? CellSignalStrengthLte ?: return@mapNotNull null
+                        
+                        val identityMap = mutableMapOf<String, Any?>()
+                        identityMap["cellIdentity"] = identity.ci
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            identityMap["earfcn"] = identity.earfcn
+                            identityMap["pci"] = identity.pci
+                            identityMap["tac"] = identity.tac
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            identityMap["mcc"] = identity.mccString
+                            identityMap["mnc"] = identity.mncString
+                        }
+                        
+                        val signalMap = mutableMapOf<String, Any?>()
+                        signalMap["asuLevel"] = signal.asuLevel
+                        signalMap["rsrp"] = signal.rsrp
+                        signalMap["rsrq"] = signal.rsrq
+                        signalMap["rssi"] = signal.rssi
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            signalMap["rssnr"] = signal.rssnr
+                            signalMap["timingAdvance"] = signal.timingAdvance
+                        }
+                        
+                        CellInfoData(
+                            type = "LTE",
+                            identity = identityMap,
+                            signal = signalMap
                         )
-                    )
-                }
-                is CellInfoGsm -> {
-                    val identity = cellInfo.cellIdentity
-                    val signal = cellInfo.cellSignalStrength
-                    CellInfoData(
-                        type = "GSM",
-                        identity = mapOf(
-                            "cellIdentity" to identity.cid,
-                            "bsic" to identity.bsic,
-                            "arfcn" to identity.arfcn,
-                            "lac" to identity.lac,
-                            "mcc" to identity.mccString,
-                            "mnc" to identity.mncString,
-                            "psc" to identity.psc
-                        ),
-                        signal = mapOf(
-                            "dbm" to signal.dbm,
-                            "rssi" to signal.asuLevel,
-                            "timingAdvance" to signal.timingAdvance
+                    }
+                    is CellInfoGsm -> {
+                        val identity = cellInfo.cellIdentity as? CellIdentityGsm ?: return@mapNotNull null
+                        val signal = cellInfo.cellSignalStrength as? CellSignalStrengthGsm ?: return@mapNotNull null
+                        
+                        val identityMap = mutableMapOf<String, Any?>()
+                        identityMap["cellIdentity"] = identity.cid
+                        identityMap["lac"] = identity.lac
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            identityMap["mcc"] = identity.mccString
+                            identityMap["mnc"] = identity.mncString
+                            identityMap["arfcn"] = identity.arfcn
+                            identityMap["bsic"] = identity.bsic
+                        }
+                        
+                        val signalMap = mutableMapOf<String, Any?>()
+                        signalMap["dbm"] = signal.dbm
+                        signalMap["asuLevel"] = signal.asuLevel
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            signalMap["timingAdvance"] = signal.timingAdvance
+                        }
+                        
+                        CellInfoData(
+                            type = "GSM",
+                            identity = identityMap,
+                            signal = signalMap
                         )
-                    )
-                }
-                is CellInfoNr -> {
-                    val identity = cellInfo.cellIdentity
-                    val signal = cellInfo.cellSignalStrength
-                    CellInfoData(
-                        type = "NR",
-                        identity = mapOf(
-                            "band" to identity.bandList?.firstOrNull(),
-                            "nci" to (identity.nci.takeIf { it >= 0 }),
-                            "pci" to identity.pci,
-                            "nrArfcn" to identity.nrarfcn,
-                            "tac" to identity.tac,
-                            "mcc" to identity.mccString,
-                            "mnc" to identity.mncString
-                        ),
-                        signal = mapOf(
-                            "ssRsrp" to signal.ssRsrp,
-                            "ssRsrq" to signal.ssRsrq,
-                            "ssSinr" to signal.ssSinr,
-                            "timingAdvance" to signal.timingAdvance
+                    }
+                    is CellInfoNr -> {
+                        val identity = cellInfo.cellIdentity as? CellIdentityNr ?: return@mapNotNull null
+                        val signal = cellInfo.cellSignalStrength as? CellSignalStrengthNr ?: return@mapNotNull null
+                        
+                        val identityMap = mutableMapOf<String, Any?>()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            try {
+                                identityMap["nci"] = identity.nci.takeIf { it >= 0 }
+                                identityMap["pci"] = identity.pci
+                                identityMap["tac"] = identity.tac
+                                identityMap["mcc"] = identity.mccString
+                                identityMap["mnc"] = identity.mncString
+                                identityMap["nrArfcn"] = identity.nrArfcn
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error reading NR identity fields: ${e.message}")
+                            }
+                        }
+                        
+                        val signalMap = mutableMapOf<String, Any?>()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            try {
+                                signalMap["ssRsrp"] = signal.ssRsrp
+                                signalMap["ssRsrq"] = signal.ssRsrq
+                                signalMap["ssSinr"] = signal.ssSinr
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error reading NR signal fields: ${e.message}")
+                            }
+                        }
+                        
+                        CellInfoData(
+                            type = "NR",
+                            identity = identityMap,
+                            signal = signalMap
                         )
-                    )
+                    }
+                    else -> null
                 }
-                else -> null
+            } catch (e: Exception) {
+                Log.w(TAG, "Error parsing cell info: ${e.message}", e)
+                null
             }
         }
     }
