@@ -1,6 +1,7 @@
 package com.example.calc.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
@@ -20,6 +21,7 @@ data class SendLogEntry(
 class SendLogRepository(private val context: Context) {
     private val gson = Gson()
     private val file: File = File(context.filesDir, "zmq_sent_log.jsonl")
+    private val TAG = "SendLogRepository"
 
     fun addLog(status: String, payload: Map<String, Any?>, attempts: Int = 0) {
         try {
@@ -28,8 +30,9 @@ class SendLogRepository(private val context: Context) {
             FileOutputStream(file, true).use { fos ->
                 fos.write((gson.toJson(entry) + "\n").toByteArray())
             }
+            Log.d(TAG, "Added sent log entry: $status")
         } catch (t: Throwable) {
-            t.printStackTrace()
+            Log.e(TAG, "Failed to add log: ${t.message}", t)
         }
     }
 
@@ -47,16 +50,20 @@ class SendLogRepository(private val context: Context) {
                         allEntries.add(e)
                     } catch (_: Exception) {}
                 }
+                Log.d(TAG, "Loaded ${lines.size} sent log entries")
             }
             
             // Read saved telemetry data entries
             try {
                 val telemetryDir = File(context.filesDir, "telephony")
+                Log.d(TAG, "Reading from telemetry dir: ${telemetryDir.absolutePath}")
+                
                 if (telemetryDir.exists() && telemetryDir.isDirectory) {
                     val files = telemetryDir.listFiles()?.sortedByDescending { it.lastModified() } ?: emptyList()
+                    Log.d(TAG, "Found ${files.size} telemetry files")
+                    
                     for (file in files) {
                         try {
-                            val json = file.readText()
                             val timestamp = extractTimestamp(file.name)
                             val entry = SendLogEntry(
                                 timestamp = timestamp,
@@ -66,14 +73,22 @@ class SendLogRepository(private val context: Context) {
                                 type = "saved"
                             )
                             allEntries.add(entry)
-                        } catch (_: Exception) {}
+                            Log.d(TAG, "Added saved entry: ${file.name}")
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error processing telemetry file ${file.name}: ${e.message}")
+                        }
                     }
+                } else {
+                    Log.d(TAG, "Telemetry directory doesn't exist or is not a directory")
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading telemetry files: ${e.message}", e)
+            }
             
+            Log.d(TAG, "Total entries loaded: ${allEntries.size}")
             return allEntries.sortedByDescending { it.timestamp }
         } catch (t: Throwable) {
-            t.printStackTrace()
+            Log.e(TAG, "Error in readAll: ${t.message}", t)
             return emptyList()
         }
     }
@@ -88,15 +103,17 @@ class SendLogRepository(private val context: Context) {
             } else {
                 System.currentTimeMillis()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse timestamp from $filename: ${e.message}")
             System.currentTimeMillis()
         }
     }
 
     fun clear() {
         try { 
-            file.writeText("") 
+            file.writeText("")
+            Log.d(TAG, "Cleared sent log")
             // Note: Saved telemetry data (local) is NOT cleared to preserve historical data
-        } catch (_: Exception) {}
-    }
-}
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear logs: ${e.message}")
+        }

@@ -249,6 +249,13 @@ class TelephonyActivity : AppCompatActivity() {
 
         if (needed.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQUEST_PERMISSION_CODE)
+        } else {
+            // All permissions already granted - auto-start service
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(PREF_SERVICE_RUNNING, false)) {
+                Log.d(TAG, "Auto-starting service (all permissions granted)")
+                startTelephonyService(prefs)
+            }
         }
     }
 
@@ -256,7 +263,10 @@ class TelephonyActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_PERMISSION_CODE) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                Toast.makeText(this, "Permissions granted", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "Permissions granted - auto-starting service")
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                startTelephonyService(prefs)
+                Toast.makeText(this, "Permissions granted - service started", Toast.LENGTH_SHORT).show()
             } else {
                 Log.d(TAG, "Required permissions not granted: ${permissions.joinToString()}")
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()

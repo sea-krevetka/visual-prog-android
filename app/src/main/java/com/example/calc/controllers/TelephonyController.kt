@@ -71,11 +71,13 @@ class TelephonyController(private val context: Context) {
     fun fetchOnce(listener: TelephonyListener) {
         backgroundHandler.post {
             try {
+                Log.d(TAG, "fetchOnce called")
                 val locationPermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
                         ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
                 val readPhoneStatePermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
 
                 if (!locationPermission || !readPhoneStatePermission) {
+                    Log.w(TAG, "Missing permissions")
                     mainHandler.post { listener.onError("Required permissions not granted") }
                     return@post
                 }
@@ -103,8 +105,11 @@ class TelephonyController(private val context: Context) {
                     traffic = trafficData
                 )
 
+                Log.d(TAG, "Collected data: ${parsedCellInfo.size} cells, location=${latestLocation?.latitude}, traffic=${trafficData}")
+
                 try {
                     telephonyRepository.saveTelephony(telephonyData)
+                    Log.d(TAG, "Data saved successfully")
                     if (zmqEnabled) {
                         val wrapper = mapOf(
                             "client_id" to ClientIdUtil.getClientId(context),
@@ -112,6 +117,7 @@ class TelephonyController(private val context: Context) {
                         )
                         val json = gson.toJson(wrapper)
                         zmqSender?.send(json)
+                        Log.d(TAG, "Data sent via ZMQ")
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to save or send telephony data", e)
@@ -289,11 +295,13 @@ class TelephonyController(private val context: Context) {
 
     fun startUpdates(listener: TelephonyListener, callbackExecutor: java.util.concurrent.Executor = ContextCompat.getMainExecutor(context)) {
         if (isUpdating) return
+        Log.d(TAG, "Starting telemetry updates")
         listenerForRun = listener
         isUpdating = true
 
         val refreshRunnable = object : Runnable {
             override fun run() {
+                Log.d(TAG, "Running refresh runnable")
                 fetchOnce(listener)
                 backgroundHandler.postDelayed(this, refreshIntervalMs)
             }
