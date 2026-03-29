@@ -168,6 +168,7 @@ class TelephonyActivity : AppCompatActivity() {
 
     private fun checkPermissions() {
         val needed = mutableListOf<String>()
+        
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
             needed.add(Manifest.permission.READ_PHONE_STATE)
         }
@@ -178,8 +179,23 @@ class TelephonyActivity : AppCompatActivity() {
             needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
         }
 
+        // Android 13+ requires READ_PHONE_NUMBERS for detailed phone state
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED) {
+                // READ_PHONE_NUMBERS might not be available on all devices, don't fail
+                try {
+                    needed.add(Manifest.permission.READ_PHONE_NUMBERS)
+                } catch (e: Exception) {
+                    Log.w(TAG, "READ_PHONE_NUMBERS not available on this device")
+                }
+            }
+        }
+
         if (needed.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQUEST_PERMISSION_CODE)
+        } else {
+            // All permissions already granted
+            startTelephonyService()
         }
     }
 
@@ -197,7 +213,24 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        registerReceiver(telemetryReceiver, IntentFilter(TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+ requires flags for registerReceiver
+                registerReceiver(
+                    telemetryReceiver,
+                    IntentFilter(TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE),
+                    Context.RECEIVER_EXPORTED
+                )
+            } else {
+                registerReceiver(
+                    telemetryReceiver,
+                    IntentFilter(TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE)
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error registering receiver: ${e.message}", e)
+        }
+        
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             startTelephonyService()
         }

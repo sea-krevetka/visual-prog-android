@@ -69,56 +69,64 @@ class TelephonyController(private val context: Context) {
 
     fun fetchOnce(listener: TelephonyListener) {
         backgroundHandler.post {
-            val locationPermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            val readPhoneStatePermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
-
-            if (!locationPermission || !readPhoneStatePermission) {
-                mainHandler.post { listener.onError("Required permissions not granted") }
-                return@post
-            }
-
-            val cellInfoList: List<CellInfo>? = try {
-                telephonyManager.allCellInfo
-            } catch (e: SecurityException) {
-                Log.e(TAG, "SecurityException reading cell info", e)
-                null
-            }
-
-            val parsedCellInfo = parseCellInfoList(cellInfoList)
-            val latestLocation = locationRepository.getLastLocation()
-            val trafficData = collectNetworkTrafficData()
-
-            val telephonyData = TelephonyData(
-                timestamp = System.currentTimeMillis(),
-                cellInfo = parsedCellInfo,
-                location = latestLocation,
-                traffic = trafficData
-            )
-
             try {
-                telephonyRepository.saveTelephony(telephonyData)
-                if (zmqEnabled) {
-                    val wrapper = mapOf(
-                        "client_id" to ClientIdUtil.getClientId(context),
-                        "telephony" to telephonyData
-                    )
-                    val json = gson.toJson(wrapper)
-                    zmqSender?.send(json)
+                val locationPermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                val readPhoneStatePermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+
+                if (!locationPermission || !readPhoneStatePermission) {
+                    mainHandler.post { listener.onError("Required permissions not granted") }
+                    return@post
+                }
+
+                val cellInfoList: List<CellInfo>? = try {
+                    telephonyManager.allCellInfo
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "SecurityException reading cell info", e)
+                    null
+                } catch (e: Exception) {
+                    Log.e(TAG, "Unexpected error reading cell info (Android 15?): ${e.message}", e)
+                    null
+                }
+
+                val parsedCellInfo = parseCellInfoList(cellInfoList)
+                val latestLocation = locationRepository.getLastLocation()
+                val trafficData = collectNetworkTrafficData()
+
+                val telephonyData = TelephonyData(
+                    timestamp = System.currentTimeMillis(),
+                    cellInfo = parsedCellInfo,
+                    location = latestLocation,
+                    traffic = trafficData
+                )
+
+                try {
+                    telephonyRepository.saveTelephony(telephonyData)
+                    if (zmqEnabled) {
+                        val wrapper = mapOf(
+                            "client_id" to ClientIdUtil.getClientId(context),
+                            "telephony" to telephonyData
+                        )
+                        val json = gson.toJson(wrapper)
+                        zmqSender?.send(json)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to save or send telephony data", e)
+                }
+
+                val text = if (parsedCellInfo.isEmpty()) {
+                    "No cell info available"
+                } else {
+                    gson.toJson(telephonyData)
+                }
+
+                mainHandler.post {
+                    listener.onCellData(telephonyData)
+                    listener.onCellInfo(text)
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to save or send telephony data", e)
-            }
-
-            val text = if (parsedCellInfo.isEmpty()) {
-                "No cell info available"
-            } else {
-                gson.toJson(telephonyData)
-            }
-
-            mainHandler.post {
-                listener.onCellData(telephonyData)
-                listener.onCellInfo(text)
+                Log.e(TAG, "Fatal error in fetchOnce: ${e.message}", e)
+                mainHandler.post { listener.onError("Error fetching telephony data: ${e.message}") }
             }
         }
     }
