@@ -199,7 +199,13 @@ class TelephonyController(private val context: Context) {
                                 identityMap["tac"] = identity.tac
                                 identityMap["mcc"] = identity.mccString
                                 identityMap["mnc"] = identity.mncString
-                                identityMap["nrArfcn"] = identity.nrArfcn
+                                // Note: nrArfcn may not be available on all devices
+                                try {
+                                    val nrArfcnMethod = identity.javaClass.getMethod("getNrArfcn")
+                                    identityMap["nrArfcn"] = nrArfcnMethod.invoke(identity)
+                                } catch (e: NoSuchMethodException) {
+                                    // Property not available on this device
+                                }
                             } catch (e: Exception) {
                                 Log.w(TAG, "Error reading NR identity fields: ${e.message}")
                             }
