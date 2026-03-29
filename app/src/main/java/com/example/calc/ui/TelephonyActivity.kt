@@ -360,6 +360,7 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        isActivityVisible = true
         Log.i(TAG, "onResume started")
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -501,6 +502,7 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        isActivityVisible = false
         try {
             unregisterReceiver(telemetryReceiver)
             Log.d(TAG, "Broadcast receiver unregistered")
@@ -510,6 +512,26 @@ class TelephonyActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error unregistering receiver: ${e.message}", e)
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        isActivityVisible = false
+        Log.d(TAG, "Activity stopped - UI updates disabled")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isActivityVisible = false
+        try {
+            unregisterReceiver(telemetryReceiver)
+            Log.d(TAG, "Broadcast receiver unregistered in onDestroy")
+        } catch (e: IllegalArgumentException) {
+            Log.d(TAG, "Receiver was not registered in onDestroy")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering receiver in onDestroy: ${e.message}", e)
+        }
+        Log.d(TAG, "Activity destroyed - resources cleaned up")
     }
 }
 
