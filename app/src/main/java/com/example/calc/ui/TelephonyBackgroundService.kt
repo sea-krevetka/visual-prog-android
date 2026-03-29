@@ -16,6 +16,7 @@ import com.example.calc.R
 import com.example.calc.controllers.LocationController
 import com.example.calc.controllers.TelephonyController
 import com.example.calc.data.model.TelephonyData
+import com.example.calc.utils.CrashLogger
 import com.google.gson.Gson
 
 class TelephonyBackgroundService : Service() {
@@ -43,60 +44,81 @@ class TelephonyBackgroundService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        telephonyController = TelephonyController(this)
-        locationController = LocationController(this, mainLooper)
+        try {
+            telephonyController = TelephonyController(this)
+            locationController = LocationController(this, mainLooper)
 
-        locationController.startLocationUpdates()
+            locationController.startLocationUpdates()
 
-        createNotificationChannel()
+            createNotificationChannel()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onCreate", e)
+            CrashLogger.logException(TAG, "Error in onCreate", e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> {
-                startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is running"))
-                startTelemetryCollection()
+        try {
+            when (intent?.action) {
+                ACTION_START -> {
+                    startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is running"))
+                    startTelemetryCollection()
+                }
+                ACTION_STOP -> {
+                    stopForeground(true)
+                    stopSelf()
+                }
+                ACTION_ENABLE_ZMQ -> {
+                    val host = intent.getStringExtra(EXTRA_ZMQ_HOST) ?: "127.0.0.1"
+                    val port = intent.getIntExtra(EXTRA_ZMQ_PORT, 2222)
+                    telephonyController.enableZmq(host, port)
+                }
+                ACTION_DISABLE_ZMQ -> {
+                    telephonyController.disableZmq()
+                }
+                else -> {
+                    startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is ready"))
+                }
             }
-            ACTION_STOP -> {
-                stopForeground(true)
-                stopSelf()
-            }
-            ACTION_ENABLE_ZMQ -> {
-                val host = intent.getStringExtra(EXTRA_ZMQ_HOST) ?: "127.0.0.1"
-                val port = intent.getIntExtra(EXTRA_ZMQ_PORT, 2222)
-                telephonyController.enableZmq(host, port)
-            }
-            ACTION_DISABLE_ZMQ -> {
-                telephonyController.disableZmq()
-            }
-            else -> {
-                startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is ready"))
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onStartCommand", e)
+            CrashLogger.logException(TAG, "Error in onStartCommand", e)
         }
         return START_STICKY
     }
 
     private fun startTelemetryCollection() {
-        telephonyController.startUpdates(object : TelephonyController.TelephonyListener {
-            override fun onCellInfo(text: String) {
-                Log.d(TAG, text)
-            }
+        try {
+            telephonyController.startUpdates(object : TelephonyController.TelephonyListener {
+                override fun onCellInfo(text: String) {
+                    Log.d(TAG, text)
+                }
 
-            override fun onCellData(data: TelephonyData) {
-                broadcastTelemetry(data)
-            }
+                override fun onCellData(data: TelephonyData) {
+                    broadcastTelemetry(data)
+                }
 
-            override fun onError(message: String) {
-                Log.w(TAG, message)
-            }
-        }, ContextCompat.getMainExecutor(this))
+                override fun onError(message: String) {
+                    Log.w(TAG, message)
+                    CrashLogger.logException(TAG, "TelephonyListener error: $message")
+                }
+            }, ContextCompat.getMainExecutor(this))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting telemetry collection", e)
+            CrashLogger.logException(TAG, "Error starting telemetry collection", e)
+        }
     }
 
     private fun broadcastTelemetry(data: TelephonyData) {
-        val intent = Intent(ACTION_TELEMETRY_UPDATE).apply {
-            putExtra(EXTRA_TELEMETRY_JSON, gson.toJson(data))
+        try {
+            val intent = Intent(ACTION_TELEMETRY_UPDATE).apply {
+                putExtra(EXTRA_TELEMETRY_JSON, gson.toJson(data))
+            }
+            sendBroadcast(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error broadcasting telemetry", e)
+            CrashLogger.logException(TAG, "Error broadcasting telemetry", e)
         }
-        sendBroadcast(intent)
     }
 
     private fun buildNotification(content: String): Notification {

@@ -109,12 +109,18 @@ object CrashLogger {
             val logDir = File(context.getExternalFilesDir(null), CRASH_LOG_DIR)
             if (!logDir.exists()) return "No logs available"
 
-            val appErrorsFile = File(logDir, "app_errors.txt")
-            if (appErrorsFile.exists()) {
-                appErrorsFile.readText().takeLast(5000) // Last 5000 chars
-            } else {
-                "No error logs found"
+            val files = logDir.listFiles()?.filter { it.isFile && it.name.endsWith(".txt") }
+                ?.sortedByDescending { it.lastModified() } ?: emptyList()
+
+            if (files.isEmpty()) {
+                return "No error logs found"
             }
+
+            val allLogs = files.joinToString("\n\n") { file ->
+                "===== ${file.name} =====\n${file.readText()}"
+            }
+            
+            allLogs.takeLast(10000) // Last 10000 chars
         } catch (e: Exception) {
             "Error reading logs: ${e.message}"
         }
