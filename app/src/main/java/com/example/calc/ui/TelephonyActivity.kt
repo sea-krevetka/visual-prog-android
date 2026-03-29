@@ -32,6 +32,7 @@ class TelephonyActivity : AppCompatActivity() {
     }
 
     private val TAG = "TelephonyActivity"
+    private var isActivityVisible = false  // Track if activity is in foreground
 
     private lateinit var tvCellInfo: TextView
     private lateinit var etZmqHost: EditText
@@ -47,7 +48,12 @@ class TelephonyActivity : AppCompatActivity() {
     private val telemetryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             try {
-                Log.i(TAG, "BroadcastReceiver.onReceive called")
+                Log.i(TAG, "BroadcastReceiver.onReceive called, isActivityVisible=$isActivityVisible")
+                if (!isActivityVisible) {
+                    Log.d(TAG, "Activity not visible, ignoring broadcast")
+                    return
+                }
+                
                 if (intent?.action == TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE) {
                     val json = intent.getStringExtra(TelephonyBackgroundService.EXTRA_TELEMETRY_JSON)
                     Log.d(TAG, "Received telemetry broadcast: ${json?.take(100)}...")
@@ -59,27 +65,35 @@ class TelephonyActivity : AppCompatActivity() {
                             
                             // Update chart
                             try {
-                                chartSignal.updateFromTelephonyData(data)
-                                Log.d(TAG, "Chart updated successfully")
+                                if (isActivityVisible && ::chartSignal.isInitialized) {
+                                    chartSignal.updateFromTelephonyData(data)
+                                    Log.d(TAG, "Chart updated successfully")
+                                }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Failed to update chart: ${e.message}", e)
                             }
                             
                             // Update summary text
-                            tvCellInfo.post {
-                                tvCellInfo.text = "✓ Sample: ${data.timestamp} | ${data.cellInfo.size} cells | " +
-                                    "Lat: ${String.format("%.4f", data.location?.latitude ?: 0.0)}"
+                            if (isActivityVisible && ::tvCellInfo.isInitialized) {
+                                tvCellInfo.post {
+                                    tvCellInfo.text = "✓ Sample: ${data.timestamp} | ${data.cellInfo.size} cells | " +
+                                        "Lat: ${String.format("%.4f", data.location?.latitude ?: 0.0)}"
+                                }
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to decode telemetry JSON: ${e.message}", e)
-                            tvCellInfo.post {
-                                tvCellInfo.text = "Error parsing telemetry: ${e.message}"
+                            if (isActivityVisible && ::tvCellInfo.isInitialized) {
+                                tvCellInfo.post {
+                                    tvCellInfo.text = "Error parsing telemetry: ${e.message}"
+                                }
                             }
                         }
                     } ?: run {
                         Log.w(TAG, "Received null JSON in telemetry broadcast")
-                        tvCellInfo.post {
-                            tvCellInfo.text = "Error: No JSON data in broadcast"
+                        if (isActivityVisible && ::tvCellInfo.isInitialized) {
+                            tvCellInfo.post {
+                                tvCellInfo.text = "Error: No JSON data in broadcast"
+                            }
                         }
                     }
                 }
@@ -389,13 +403,20 @@ class TelephonyActivity : AppCompatActivity() {
     private fun loadAndDisplaySavedData() {
         Thread {
             try {
-                Log.d(TAG, "Loading saved telemetry data from disk")
+                Log.d(TAG, "Loading saved telemetry data from disk, isActivityVisible=$isActivityVisible")
                 val telephonyDir = java.io.File(filesDir, "telephony")
+                
+                if (!isActivityVisible) {
+                    Log.d(TAG, "Activity not visible, stopping data load")
+                    return@Thread
+                }
                 
                 if (!telephonyDir.exists()) {
                     Log.d(TAG, "Telephony directory does not exist yet")
-                    tvCellInfo.post {
-                        tvCellInfo.text = "⏳ Waiting for data collection to start...\nEnsure service is running."
+                    if (isActivityVisible && ::tvCellInfo.isInitialized) {
+                        tvCellInfo.post {
+                            tvCellInfo.text = "⏳ Waiting for data collection to start...\nEnsure service is running."
+                        }
                     }
                     return@Thread
                 }
@@ -404,8 +425,10 @@ class TelephonyActivity : AppCompatActivity() {
                 Log.d(TAG, "Found ${files.size} saved telemetry files")
                 
                 if (files.isEmpty()) {
-                    tvCellInfo.post {
-                        tvCellInfo.text = "📂 No data collected yet.\nEnsure the background service is running and collecting data."
+                    if (isActivityVisible && ::tvCellInfo.isInitialized) {
+                        tvCellInfo.post {
+                            tvCellInfo.text = "📂 No data collected yet.\nEnsure the background service is running and collecting data."
+                        }
                     }
                     return@Thread
                 }
@@ -415,6 +438,11 @@ class TelephonyActivity : AppCompatActivity() {
                 var processedCount = 0
                 
                 filesToLoad.forEach { file ->
+                    if (!isActivityVisible) {
+                        Log.d(TAG, "Activity not visible, stopping load loop")
+                        return@Thread
+                    }
+                    
                     try {
                         val json = file.readText()
                         val data = gson.fromJson(json, TelephonyData::class.java)
@@ -422,7 +450,9 @@ class TelephonyActivity : AppCompatActivity() {
                         
                         // Update chart with each file
                         try {
-                            chartSignal.updateFromTelephonyData(data)
+                            if (isActivityVisible && ::chartSignal.isInitialized) {
+                                chartSignal.updateFromTelephonyData(data)
+                            }
                         } catch (e: Exception) {
                             Log.e(TAG, "Failed to update chart from file ${file.name}: ${e.message}")
                         }
@@ -434,20 +464,24 @@ class TelephonyActivity : AppCompatActivity() {
                 
                 // Update UI with summary
                 val latestFile = files.firstOrNull()
-                if (latestFile != null) {
+                if (latestFile != null && isActivityVisible) {
                     try {
                         val json = latestFile.readText()
                         val data = gson.fromJson(json, TelephonyData::class.java)
                         
-                        tvCellInfo.post {
-                            val cellCount = data.cellInfo.size
-                            val locStr = if (data.location != null) {
-                                String.format("📍 %.4f, %.4f", data.location.latitude, data.location.longitude)
-                            } else "📍 No location"
-                            
-                            tvCellInfo.text = "✓ Latest: ${data.cellInfo.size} cells | $locStr\n" +
-                                "Files loaded: $processedCount / ${files.size}\n" +
-                                "Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(data.timestamp))}"
+                        if (isActivityVisible && ::tvCellInfo.isInitialized) {
+                            tvCellInfo.post {
+                                if (!isActivityVisible) return@post
+                                
+                                val cellCount = data.cellInfo.size
+                                val locStr = if (data.location != null) {
+                                    String.format("📍 %.4f, %.4f", data.location.latitude, data.location.longitude)
+                                } else "📍 No location"
+                                
+                                tvCellInfo.text = "✓ Latest: ${data.cellInfo.size} cells | $locStr\n" +
+                                    "Files loaded: $processedCount / ${files.size}\n" +
+                                    "Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(data.timestamp))}"
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error loading latest file: ${e.message}")
@@ -455,8 +489,11 @@ class TelephonyActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in loadAndDisplaySavedData: ${e.message}", e)
-                tvCellInfo.post {
-                    tvCellInfo.text = "❌ Error loading data: ${e.message}"
+                if (isActivityVisible && ::tvCellInfo.isInitialized) {
+                    tvCellInfo.post {
+                        if (!isActivityVisible) return@post
+                        tvCellInfo.text = "❌ Error loading data: ${e.message}"
+                    }
                 }
             }
         }.start()
