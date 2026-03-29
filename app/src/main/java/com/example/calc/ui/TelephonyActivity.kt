@@ -91,27 +91,44 @@ class TelephonyActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_telephony)
 
-        initializeViews()
-        initializeZmqViews()
-
-        checkPermissions()
+        try {
+            initializeViews()
+            initializeZmqViews()
+            checkPermissions()
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error in onCreate: ${e.message}", e)
+            tvCellInfo.post {
+                tvCellInfo.text = "❌ Initialization error: ${e.message}"
+            }
+            CrashLogger.logException(TAG, "onCreate initialization failed", e)
+        }
     }
 
     private fun initializeViews() {
-        tvCellInfo = findViewById(R.id.tvCellInfo)
-        btnServiceToggle = findViewById(R.id.btnServiceToggle)
-        chartSignal = findViewById(R.id.chartSignal)
-
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        updateServiceToggleButton(prefs)
-
-        btnServiceToggle.setOnClickListener {
-            val isRunning = prefs.getBoolean(PREF_SERVICE_RUNNING, false)
-            if (isRunning) {
-                stopTelephonyService(prefs)
-            } else {
-                startTelephonyService(prefs)
+        try {
+            tvCellInfo = findViewById(R.id.tvCellInfo)
+            btnServiceToggle = findViewById(R.id.btnServiceToggle)
+            chartSignal = findViewById(R.id.chartSignal)
+            
+            if (!::tvCellInfo.isInitialized || !::btnServiceToggle.isInitialized || !::chartSignal.isInitialized) {
+                throw Exception("Required views not found in layout")
             }
+
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            updateServiceToggleButton(prefs)
+
+            btnServiceToggle.setOnClickListener {
+                val isRunning = prefs.getBoolean(PREF_SERVICE_RUNNING, false)
+                if (isRunning) {
+                    stopTelephonyService(prefs)
+                } else {
+                    startTelephonyService(prefs)
+                }
+            }
+            Log.d(TAG, "Views initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing views: ${e.message}", e)
+            throw e
         }
     }
 
@@ -127,156 +144,198 @@ class TelephonyActivity : AppCompatActivity() {
     }
 
     private fun initializeZmqViews() {
-        etZmqHost = findViewById(R.id.etZmqHost)
-        etZmqPort = findViewById(R.id.etZmqPort)
-        btnZmqToggle = findViewById(R.id.btnZmqToggle)
-        btnZmqUpdate = findViewById(R.id.btnZmqUpdate)
-        btnShowSent = findViewById(R.id.btnShowSent)
-        btnRefreshData = findViewById(R.id.btnRefreshData)
+        try {
+            etZmqHost = findViewById(R.id.etZmqHost)
+            etZmqPort = findViewById(R.id.etZmqPort)
+            btnZmqToggle = findViewById(R.id.btnZmqToggle)
+            btnZmqUpdate = findViewById(R.id.btnZmqUpdate)
+            btnShowSent = findViewById(R.id.btnShowSent)
+            btnRefreshData = findViewById(R.id.btnRefreshData)
 
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        etZmqHost.setText(prefs.getString(PREF_HOST, "192.168.62.19")) // Default to a common LAN IP
-        etZmqPort.setText("2222")
-
-        if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
-            btnZmqToggle.text = "Disable Send"
-        }
-
-        btnRefreshData.setOnClickListener {
-            Toast.makeText(this, "Refreshing data...", Toast.LENGTH_SHORT).show()
-            loadAndDisplaySavedData()
-        }
-
-        btnZmqToggle.setOnClickListener {
-            val isCurrentlyEnabled = btnZmqToggle.text.toString().contains("Disable", true)
-            val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
-            val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
-            if (isCurrentlyEnabled) {
-                // Disable send
-                sendZmqCommand(false, host, port)
-                btnZmqToggle.text = "Enable Send"
-                with(prefs.edit()) {
-                    putBoolean(PREF_SEND_ENABLED, false)
-                    apply()
-                }
-            } else {
-                // Enable send
-                sendZmqCommand(true, host, port)
-                btnZmqToggle.text = "Disable Send"
-                with(prefs.edit()) {
-                    putString(PREF_HOST, host)
-                    putBoolean(PREF_SEND_ENABLED, true)
-                    apply()
-                }
+            if (!::etZmqHost.isInitialized || !::btnZmqToggle.isInitialized) {
+                throw Exception("Required ZMQ views not found in layout")
             }
-        }
 
-        btnZmqUpdate.setOnClickListener {
-            val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
-            val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            etZmqHost.setText(prefs.getString(PREF_HOST, "192.168.62.19")) // Default to a common LAN IP
+            etZmqPort.setText("2222")
+
             if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
-                sendZmqCommand(true, host, port)
-                Toast.makeText(this, "ZMQ endpoint updated: $host:$port", Toast.LENGTH_SHORT).show()
-                with(prefs.edit()) {
-                    putString(PREF_HOST, host)
-                    apply()
-                }
-            } else {
-                Toast.makeText(this, "Enable send first", Toast.LENGTH_SHORT).show()
+                btnZmqToggle.text = "Disable Send"
             }
-        }
 
-        btnShowSent.setOnClickListener {
-            startActivity(Intent(this, SentSnapshotsActivity::class.java))
+            btnRefreshData.setOnClickListener {
+                Toast.makeText(this, "Refreshing data...", Toast.LENGTH_SHORT).show()
+                loadAndDisplaySavedData()
+            }
+
+            btnZmqToggle.setOnClickListener {
+                val isCurrentlyEnabled = btnZmqToggle.text.toString().contains("Disable", true)
+                val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
+                val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
+                if (isCurrentlyEnabled) {
+                    // Disable send
+                    sendZmqCommand(false, host, port)
+                    btnZmqToggle.text = "Enable Send"
+                    with(prefs.edit()) {
+                        putBoolean(PREF_SEND_ENABLED, false)
+                        apply()
+                    }
+                } else {
+                    // Enable send
+                    sendZmqCommand(true, host, port)
+                    btnZmqToggle.text = "Disable Send"
+                    with(prefs.edit()) {
+                        putString(PREF_HOST, host)
+                        putBoolean(PREF_SEND_ENABLED, true)
+                        apply()
+                    }
+                }
+            }
+
+            btnZmqUpdate.setOnClickListener {
+                val host = etZmqHost.text.toString().ifBlank { "127.0.0.1" }
+                val port = etZmqPort.text.toString().toIntOrNull() ?: 2222
+                if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
+                    sendZmqCommand(true, host, port)
+                    Toast.makeText(this, "ZMQ endpoint updated: $host:$port", Toast.LENGTH_SHORT).show()
+                    with(prefs.edit()) {
+                        putString(PREF_HOST, host)
+                        apply()
+                    }
+                } else {
+                    Toast.makeText(this, "Enable send first", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            btnShowSent.setOnClickListener {
+                startActivity(Intent(this, SentSnapshotsActivity::class.java))
+            }
+            
+            Log.d(TAG, "ZMQ views initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing ZMQ views: ${e.message}", e)
+            throw e
         }
     }
 
     private fun startTelephonyService(prefs: android.content.SharedPreferences) {
-        val intent = Intent(this, TelephonyBackgroundService::class.java)
-        intent.action = TelephonyBackgroundService.ACTION_START
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ContextCompat.startForegroundService(this, intent)
-        } else {
-            startService(intent)
+        try {
+            val intent = Intent(this, TelephonyBackgroundService::class.java)
+            intent.action = TelephonyBackgroundService.ACTION_START
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Log.d(TAG, "Starting foreground service (Android O+)")
+                ContextCompat.startForegroundService(this, intent)
+            } else {
+                Log.d(TAG, "Starting service (Android pre-O)")
+                startService(intent)
+            }
+            with(prefs.edit()) {
+                putBoolean(PREF_SERVICE_RUNNING, true)
+                apply()
+            }
+            updateServiceToggleButton(prefs)
+            Toast.makeText(this, "Background service started", Toast.LENGTH_SHORT).show()
+            Log.d(TAG, "Service start intent sent successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting service: ${e.message}", e)
+            Toast.makeText(this, "Error starting service: ${e.message}", Toast.LENGTH_SHORT).show()
+            CrashLogger.logException(TAG, "Failed to start service", e)
         }
-        with(prefs.edit()) {
-            putBoolean(PREF_SERVICE_RUNNING, true)
-            apply()
-        }
-        updateServiceToggleButton(prefs)
-        Toast.makeText(this, "Background service started", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopTelephonyService(prefs: android.content.SharedPreferences) {
-        val intent = Intent(this, TelephonyBackgroundService::class.java).apply {
-            action = TelephonyBackgroundService.ACTION_STOP
+        try {
+            val intent = Intent(this, TelephonyBackgroundService::class.java).apply {
+                action = TelephonyBackgroundService.ACTION_STOP
+            }
+            Log.d(TAG, "Stopping service")
+            startService(intent)
+            with(prefs.edit()) {
+                putBoolean(PREF_SERVICE_RUNNING, false)
+                apply()
+            }
+            updateServiceToggleButton(prefs)
+            Toast.makeText(this, "Background service stopped", Toast.LENGTH_SHORT).show()
+            Log.d(TAG, "Service stop intent sent successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping service: ${e.message}", e)
+            Toast.makeText(this, "Error stopping service: ${e.message}", Toast.LENGTH_SHORT).show()
+            CrashLogger.logException(TAG, "Failed to stop service", e)
         }
-        startService(intent)
-        with(prefs.edit()) {
-            putBoolean(PREF_SERVICE_RUNNING, false)
-            apply()
-        }
-        updateServiceToggleButton(prefs)
-        Toast.makeText(this, "Background service stopped", Toast.LENGTH_SHORT).show()
     }
 
     private fun sendZmqCommand(enable: Boolean, host: String, port: Int) {
-        val intent = Intent(this, TelephonyBackgroundService::class.java).apply {
-            action = if (enable) TelephonyBackgroundService.ACTION_ENABLE_ZMQ else TelephonyBackgroundService.ACTION_DISABLE_ZMQ
-            putExtra(TelephonyBackgroundService.EXTRA_ZMQ_HOST, host)
-            putExtra(TelephonyBackgroundService.EXTRA_ZMQ_PORT, port)
+        try {
+            val intent = Intent(this, TelephonyBackgroundService::class.java).apply {
+                action = if (enable) TelephonyBackgroundService.ACTION_ENABLE_ZMQ else TelephonyBackgroundService.ACTION_DISABLE_ZMQ
+                putExtra(TelephonyBackgroundService.EXTRA_ZMQ_HOST, host)
+                putExtra(TelephonyBackgroundService.EXTRA_ZMQ_PORT, port)
+            }
+            Log.d(TAG, "Sending ZMQ command: ${intent.action}")
+            startService(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending ZMQ command: ${e.message}", e)
         }
-        startService(intent)
     }
 
     private fun checkPermissions() {
-        val needed = mutableListOf<String>()
-        
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            needed.add(Manifest.permission.READ_PHONE_STATE)
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            needed.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
+        try {
+            val needed = mutableListOf<String>()
+            
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.READ_PHONE_STATE)
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
 
-        // Android 13+ requires READ_PHONE_NUMBERS for detailed phone state
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED) {
-                // READ_PHONE_NUMBERS might not be available on all devices, don't fail
-                try {
-                    needed.add(Manifest.permission.READ_PHONE_NUMBERS)
-                } catch (e: Exception) {
-                    Log.w(TAG, "READ_PHONE_NUMBERS not available on this device")
+            // Android 13+ requires READ_PHONE_NUMBERS for detailed phone state
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_NUMBERS) != PackageManager.PERMISSION_GRANTED) {
+                    // READ_PHONE_NUMBERS might not be available on all devices, don't fail
+                    try {
+                        needed.add(Manifest.permission.READ_PHONE_NUMBERS)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "READ_PHONE_NUMBERS not available on this device")
+                    }
                 }
             }
-        }
 
-        if (needed.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQUEST_PERMISSION_CODE)
-        } else {
-            // All permissions already granted - auto-start service
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            if (!prefs.getBoolean(PREF_SERVICE_RUNNING, false)) {
-                Log.d(TAG, "Auto-starting service (all permissions granted)")
-                startTelephonyService(prefs)
+            if (needed.isNotEmpty()) {
+                ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQUEST_PERMISSION_CODE)
+            } else {
+                // All permissions already granted - auto-start service
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                if (!prefs.getBoolean(PREF_SERVICE_RUNNING, false)) {
+                    Log.d(TAG, "Auto-starting service (all permissions granted)")
+                    startTelephonyService(prefs)
+                }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in checkPermissions: ${e.message}", e)
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_PERMISSION_CODE) {
-            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                Log.d(TAG, "Permissions granted - auto-starting service")
-                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                startTelephonyService(prefs)
-                Toast.makeText(this, "Permissions granted - service started", Toast.LENGTH_SHORT).show()
-            } else {
-                Log.d(TAG, "Required permissions not granted: ${permissions.joinToString()}")
-                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
+            try {
+                if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    Log.d(TAG, "Permissions granted - auto-starting service")
+                    val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    startTelephonyService(prefs)
+                    Toast.makeText(this, "Permissions granted - service started", Toast.LENGTH_SHORT).show()
+                } else {
+                    Log.d(TAG, "Required permissions not granted: ${permissions.joinToString()}")
+                    Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in onRequestPermissionsResult: ${e.message}", e)
+                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -388,7 +447,15 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        unregisterReceiver(telemetryReceiver)
+        try {
+            unregisterReceiver(telemetryReceiver)
+            Log.d(TAG, "Broadcast receiver unregistered")
+        } catch (e: IllegalArgumentException) {
+            // Receiver was not registered - this is safe to ignore
+            Log.d(TAG, "Receiver not registered, nothing to unregister")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering receiver: ${e.message}", e)
+        }
     }
 }
 
