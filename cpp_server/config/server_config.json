@@ -1,0 +1,31 @@
+{
+  "server": {
+    "port": 2222,
+    "bind_address": "0.0.0.0",
+    "zmq_socket_type": "REP",
+    "receive_timeout_ms": 1000
+  },
+  "gui": {
+    "window_width": 1400,
+    "window_height": 900,
+    "window_title": "Telepathy Server - ZMQ Monitor",
+    "vsync": true,
+    "max_fps": 60
+  },
+  "storage": {
+    "base_path": "./data/received",
+    "save_individual": true,
+    "save_latest": true,
+    "json_indent": 2
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "server.log",
+    "console": true
+  },
+  "monitoring": {
+    "display_limit": 20,
+    "packet_history_size": 100,
+    "stats_update_interval_ms": 2000
+  }
+}

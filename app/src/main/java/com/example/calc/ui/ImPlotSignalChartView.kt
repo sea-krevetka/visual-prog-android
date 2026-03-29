@@ -55,7 +55,7 @@ class ImPlotSignalChartView @JvmOverloads constructor(
             val signalMap = info.signal
             val value = when (type) {
                 "LTE" -> (signalMap["rsrp"] as? Number)?.toFloat()
-                    ?: (signalMap["rssi"] as? Number)?.toFloat() ?: Float.MIN_VALUE
+                    ?: (signalMap["rssi"] as? Number)?.toFloat() ?: Float   .MIN_VALUE
                 "GSM" -> (signalMap["dbm"] as? Number)?.toFloat() ?: Float.MIN_VALUE
                 "NR" -> (signalMap["ssRsrp"] as? Number)?.toFloat() ?: Float.MIN_VALUE
                 else -> Float.MIN_VALUE
@@ -95,7 +95,6 @@ class ImPlotSignalChartView @JvmOverloads constructor(
         val width = width.toFloat()
         val height = height.toFloat()
 
-        // grid
         for (i in 0..4) {
             val y = paddingTop + i * (height - paddingTop - paddingBottom) / 4f
             canvas.drawLine(paddingLeft.toFloat(), y, width - paddingRight, y, gridPaint)
@@ -109,7 +108,6 @@ class ImPlotSignalChartView @JvmOverloads constructor(
         val chartWidth = chartRight - chartLeft
         val chartHeight = chartBottom - chartTop
 
-        // draw lines
         val data = copyData()
         val yMin = -140f
         val yMax = -40f
@@ -133,7 +131,6 @@ class ImPlotSignalChartView @JvmOverloads constructor(
             canvas.drawText(type, chartLeft + 8f, chartTop + 30f + 30f * (when (type) {"LTE" -> 0; "NR" -> 1; else -> 2}), textPaint)
         }
 
-        // legend
         colorMap.entries.forEachIndexed { idx, entry ->
             val text = entry.key
             linePaint.color = entry.value
@@ -144,7 +141,6 @@ class ImPlotSignalChartView @JvmOverloads constructor(
             canvas.drawText(text, x0 + 38f, y0 + 8f, textPaint)
         }
 
-        // axis labels
         canvas.drawText("ImPlot-style CellSignalStrength (dBm)", chartLeft, paddingTop.toFloat() + 15f, textPaint)
     }
 }
