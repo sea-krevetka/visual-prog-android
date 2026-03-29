@@ -76,6 +76,8 @@ class TelephonyController(private val context: Context) {
                         ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
                 val readPhoneStatePermission = ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
 
+                Log.d(TAG, "Permissions - location: $locationPermission, phone: $readPhoneStatePermission")
+                
                 if (!locationPermission || !readPhoneStatePermission) {
                     Log.w(TAG, "Missing permissions")
                     mainHandler.post { listener.onError("Required permissions not granted") }
@@ -83,20 +85,27 @@ class TelephonyController(private val context: Context) {
                 }
 
                 val cellInfoList: List<CellInfo>? = try {
-                    telephonyManager.allCellInfo
+                    val cells = telephonyManager.allCellInfo
+                    Log.d(TAG, "Got cellInfoList: ${cells?.size} items")
+                    cells
                 } catch (e: SecurityException) {
                     Log.e(TAG, "SecurityException reading cell info", e)
                     CrashLogger.logException(TAG, "SecurityException reading cell info", e)
                     null
                 } catch (e: Exception) {
-                    Log.e(TAG, "Unexpected error reading cell info (Android 15?): ${e.message}", e)
+                    Log.e(TAG, "Unexpected error reading cell info: ${e.message}", e)
                     CrashLogger.logException(TAG, "Unexpected error reading cell info", e)
                     null
                 }
 
                 val parsedCellInfo = parseCellInfoList(cellInfoList)
+                Log.d(TAG, "Parsed cell info: ${parsedCellInfo.size} cells")
+                
                 val latestLocation = locationRepository.getLastLocation()
+                Log.d(TAG, "Got location: $latestLocation")
+                
                 val trafficData = collectNetworkTrafficData()
+                Log.d(TAG, "Got traffic: $trafficData")
 
                 val telephonyData = TelephonyData(
                     timestamp = System.currentTimeMillis(),
@@ -294,47 +303,60 @@ class TelephonyController(private val context: Context) {
     }
 
     fun startUpdates(listener: TelephonyListener, callbackExecutor: java.util.concurrent.Executor = ContextCompat.getMainExecutor(context)) {
-        if (isUpdating) return
+        if (isUpdating) {
+            Log.w(TAG, "Already updating, ignoring startUpdates call")
+            return
+        }
         Log.d(TAG, "Starting telemetry updates")
         listenerForRun = listener
         isUpdating = true
 
         val refreshRunnable = object : Runnable {
             override fun run() {
-                Log.d(TAG, "Running refresh runnable")
+                Log.d(TAG, "Running refresh runnable - interval: ${refreshIntervalMs}ms")
                 fetchOnce(listener)
+                Log.d(TAG, "Scheduling next refresh in ${refreshIntervalMs}ms")
                 backgroundHandler.postDelayed(this, refreshIntervalMs)
             }
         }
+        Log.d(TAG, "Posting initial refresh runnable")
         backgroundHandler.post(refreshRunnable)
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Log.d(TAG, "OS >= Android 12, using TelephonyCallback")
                 telephonyCallback = object : TelephonyCallback(), TelephonyCallback.CellInfoListener, TelephonyCallback.SignalStrengthsListener {
                     override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>) {
+                        Log.d(TAG, "onCellInfoChanged called with ${cellInfo.size} cells")
                         val text = if (cellInfo.isEmpty()) "No cell info available" else gson.toJson(parseCellInfoList(cellInfo))
                         mainHandler.post { listener.onCellInfo(text) }
                     }
 
                     override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
+                        Log.d(TAG, "onSignalStrengthsChanged called")
                         fetchOnce(listener)
                     }
                 }
+                Log.d(TAG, "Registering TelephonyCallback")
                 telephonyManager.registerTelephonyCallback(callbackExecutor, telephonyCallback!!)
             } else {
+                Log.d(TAG, "OS < Android 12, using deprecated PhoneStateListener")
                 @Suppress("DEPRECATION")
                 phoneStateListener = object : PhoneStateListener() {
                     override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>?) {
+                        Log.d(TAG, "onCellInfoChanged (deprecated) called with ${cellInfo?.size ?: 0} cells")
                         val text = if (cellInfo.isNullOrEmpty()) "No cell info available" else gson.toJson(parseCellInfoList(cellInfo))
                         mainHandler.post { listener.onCellInfo(text) }
                     }
 
                     override fun onSignalStrengthsChanged(signalStrength: SignalStrength?) {
+                        Log.d(TAG, "onSignalStrengthsChanged (deprecated) called")
                         fetchOnce(listener)
                     }
                 }
                 @Suppress("DEPRECATION")
                 telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CELL_INFO or PhoneStateListener.LISTEN_SIGNAL_STRENGTHS)
+                Log.d(TAG, "PhoneStateListener registered")
             }
         } catch (t: Throwable) {
             Log.w(TAG, "Failed to register telephony listeners", t)

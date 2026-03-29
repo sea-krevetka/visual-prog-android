@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.example.calc.data.model.LocationData
 import com.example.calc.data.repository.LocationRepository
@@ -22,6 +23,7 @@ class LocationController(
     private val mainLooper: Looper
 ) : LocationListener {
 
+    private val TAG = "LocationController"
     private val locationManager: LocationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val locationRepository = LocationRepository(context)
@@ -46,20 +48,26 @@ class LocationController(
 
     fun startLocationUpdates() {
         backgroundHandler.post {
+            Log.d(TAG, "startLocationUpdates called")
             if (!hasLocationPermission()) {
+                Log.e(TAG, "Location permission not granted")
                 mainHandler.post { listeners.forEach { it.onLocationError("Location permission not granted") } }
                 return@post
             }
 
             try {
+                Log.d(TAG, "Requesting GPS_PROVIDER updates (1000ms, 1m threshold)")
                 locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER, 1000L, 1f, this, handlerThread.looper
                 )
+                Log.d(TAG, "Requesting NETWORK_PROVIDER updates (1000ms, 1m threshold)")
                 locationManager.requestLocationUpdates(
                     LocationManager.NETWORK_PROVIDER, 1000L, 1f, this, handlerThread.looper
                 )
+                Log.d(TAG, "Location updates started successfully")
                 mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Location updates started") } }
             } catch (ex: SecurityException) {
+                Log.e(TAG, "Failed to start location updates: ${ex.message}", ex)
                 mainHandler.post { listeners.forEach { it.onLocationError("Failed to start location updates: ${ex.message}") } }
             }
         }
@@ -71,6 +79,7 @@ class LocationController(
     }
 
     override fun onLocationChanged(location: Location) {
+        Log.d(TAG, "Location update received: lat=${location.latitude}, lon=${location.longitude}, accuracy=${location.accuracy}m, provider=${location.provider}")
         val locationData = LocationData(
             latitude = location.latitude,
             longitude = location.longitude,
@@ -79,16 +88,19 @@ class LocationController(
             accuracy = location.accuracy,
             provider = location.provider ?: "unknown"
         )
+        Log.d(TAG, "Saving location data: $locationData")
         locationRepository.saveLocation(locationData)
         mainHandler.post { listeners.forEach { it.onLocationUpdated(locationData) } }
     }
 
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
     override fun onProviderEnabled(provider: String) {
+        Log.d(TAG, "Location provider enabled: $provider")
         mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Provider enabled: $provider") } }
     }
     
     override fun onProviderDisabled(provider: String) {
+        Log.d(TAG, "Location provider disabled: $provider")
         mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Provider disabled: $provider") } }
     }
 
@@ -98,11 +110,14 @@ class LocationController(
     }
 
     private fun hasLocationPermission(): Boolean {
-        return ActivityCompat.checkSelfPermission(
+        val hasFine = ActivityCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ActivityCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
+        Log.d(TAG, "Permission check - FINE: $hasFine, COARSE: $hasCoarse")
+        return hasFine || hasCoarse
     }
 
     companion object {

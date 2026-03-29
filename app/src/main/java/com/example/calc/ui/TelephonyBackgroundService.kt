@@ -45,12 +45,19 @@ class TelephonyBackgroundService : Service() {
         super.onCreate()
 
         try {
+            Log.d(TAG, "Service onCreate started")
             telephonyController = TelephonyController(this)
+            Log.d(TAG, "TelephonyController created")
+            
             locationController = LocationController(this, mainLooper)
-
+            Log.d(TAG, "LocationController created")
+            
+            Log.d(TAG, "Starting location updates from service")
             locationController.startLocationUpdates()
+            Log.d(TAG, "Location updates started from service")
 
             createNotificationChannel()
+            Log.d(TAG, "Notification channel created")
         } catch (e: Exception) {
             Log.e(TAG, "Error in onCreate", e)
             CrashLogger.logException(TAG, "Error in onCreate", e)
@@ -59,24 +66,30 @@ class TelephonyBackgroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
+            Log.d(TAG, "onStartCommand called with action: ${intent?.action}")
             when (intent?.action) {
                 ACTION_START -> {
+                    Log.d(TAG, "ACTION_START received, starting telemetry collection")
                     startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is running"))
                     startTelemetryCollection()
                 }
                 ACTION_STOP -> {
+                    Log.d(TAG, "ACTION_STOP received")
                     stopForeground(true)
                     stopSelf()
                 }
                 ACTION_ENABLE_ZMQ -> {
                     val host = intent.getStringExtra(EXTRA_ZMQ_HOST) ?: "127.0.0.1"
                     val port = intent.getIntExtra(EXTRA_ZMQ_PORT, 2222)
+                    Log.d(TAG, "ACTION_ENABLE_ZMQ received: $host:$port")
                     telephonyController.enableZmq(host, port)
                 }
                 ACTION_DISABLE_ZMQ -> {
+                    Log.d(TAG, "ACTION_DISABLE_ZMQ received")
                     telephonyController.disableZmq()
                 }
                 else -> {
+                    Log.d(TAG, "No action specified, starting foreground with ready notification")
                     startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is ready"))
                 }
             }
@@ -89,20 +102,23 @@ class TelephonyBackgroundService : Service() {
 
     private fun startTelemetryCollection() {
         try {
+            Log.d(TAG, "Starting telemetry collection")
             telephonyController.startUpdates(object : TelephonyController.TelephonyListener {
                 override fun onCellInfo(text: String) {
-                    Log.d(TAG, text)
+                    Log.d(TAG, "onCellInfo: $text")
                 }
 
                 override fun onCellData(data: TelephonyData) {
+                    Log.d(TAG, "onCellData received: $data")
                     broadcastTelemetry(data)
                 }
 
                 override fun onError(message: String) {
-                    Log.w(TAG, message)
+                    Log.w(TAG, "TelephonyListener error: $message")
                     CrashLogger.logException(TAG, "TelephonyListener error: $message")
                 }
             }, ContextCompat.getMainExecutor(this))
+            Log.d(TAG, "Telemetry collection started successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting telemetry collection", e)
             CrashLogger.logException(TAG, "Error starting telemetry collection", e)
