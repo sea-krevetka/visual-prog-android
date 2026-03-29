@@ -27,6 +27,7 @@ class TelephonyActivity : AppCompatActivity() {
         private const val PREFS_NAME = "ZmqPrefs"
         private const val PREF_HOST = "zmq_host"
         private const val PREF_SEND_ENABLED = "send_enabled"
+        private const val PREF_SERVICE_RUNNING = "service_running"
     }
 
     private val TAG = "TelephonyActivity"
@@ -37,8 +38,7 @@ class TelephonyActivity : AppCompatActivity() {
     private lateinit var btnZmqToggle: Button
     private lateinit var btnZmqUpdate: Button
     private lateinit var btnShowSent: Button
-    private lateinit var btnStartService: Button
-    private lateinit var btnStopService: Button
+    private lateinit var btnServiceToggle: Button
     private lateinit var chartSignal: ImPlotSignalChartView
     private val gson = Gson()
 
@@ -98,12 +98,31 @@ class TelephonyActivity : AppCompatActivity() {
 
     private fun initializeViews() {
         tvCellInfo = findViewById(R.id.tvCellInfo)
-        btnStartService = findViewById(R.id.btnStartService)
-        btnStopService = findViewById(R.id.btnStopService)
+        btnServiceToggle = findViewById(R.id.btnServiceToggle)
         chartSignal = findViewById(R.id.chartSignal)
 
-        btnStartService.setOnClickListener { startTelephonyService() }
-        btnStopService.setOnClickListener { stopTelephonyService() }
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        updateServiceToggleButton(prefs)
+
+        btnServiceToggle.setOnClickListener {
+            val isRunning = prefs.getBoolean(PREF_SERVICE_RUNNING, false)
+            if (isRunning) {
+                stopTelephonyService(prefs)
+            } else {
+                startTelephonyService(prefs)
+            }
+        }
+    }
+
+    private fun updateServiceToggleButton(prefs: android.content.SharedPreferences) {
+        val isRunning = prefs.getBoolean(PREF_SERVICE_RUNNING, false)
+        if (isRunning) {
+            btnServiceToggle.text = "⏹ STOP SERVICE"
+            btnServiceToggle.setBackgroundColor(android.graphics.Color.parseColor("#D32F2F"))
+        } else {
+            btnServiceToggle.text = "▶ START SERVICE"
+            btnServiceToggle.setBackgroundColor(android.graphics.Color.parseColor("#388E3C"))
+        }
     }
 
     private fun initializeZmqViews() {
@@ -165,7 +184,7 @@ class TelephonyActivity : AppCompatActivity() {
         }
     }
 
-    private fun startTelephonyService() {
+    private fun startTelephonyService(prefs: android.content.SharedPreferences) {
         val intent = Intent(this, TelephonyBackgroundService::class.java)
         intent.action = TelephonyBackgroundService.ACTION_START
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -173,14 +192,24 @@ class TelephonyActivity : AppCompatActivity() {
         } else {
             startService(intent)
         }
+        with(prefs.edit()) {
+            putBoolean(PREF_SERVICE_RUNNING, true)
+            apply()
+        }
+        updateServiceToggleButton(prefs)
         Toast.makeText(this, "Background service started", Toast.LENGTH_SHORT).show()
     }
 
-    private fun stopTelephonyService() {
+    private fun stopTelephonyService(prefs: android.content.SharedPreferences) {
         val intent = Intent(this, TelephonyBackgroundService::class.java).apply {
             action = TelephonyBackgroundService.ACTION_STOP
         }
         startService(intent)
+        with(prefs.edit()) {
+            putBoolean(PREF_SERVICE_RUNNING, false)
+            apply()
+        }
+        updateServiceToggleButton(prefs)
         Toast.makeText(this, "Background service stopped", Toast.LENGTH_SHORT).show()
     }
 
@@ -220,9 +249,6 @@ class TelephonyActivity : AppCompatActivity() {
 
         if (needed.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQUEST_PERMISSION_CODE)
-        } else {
-            // All permissions already granted
-            startTelephonyService()
         }
     }
 
@@ -230,7 +256,7 @@ class TelephonyActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_PERMISSION_CODE) {
             if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                startTelephonyService()
+                Toast.makeText(this, "Permissions granted", Toast.LENGTH_SHORT).show()
             } else {
                 Log.d(TAG, "Required permissions not granted: ${permissions.joinToString()}")
                 Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
@@ -259,7 +285,8 @@ class TelephonyActivity : AppCompatActivity() {
         }
         
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            startTelephonyService()
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            updateServiceToggleButton(prefs)
         }
     }
 

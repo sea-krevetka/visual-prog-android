@@ -29,9 +29,29 @@ class SentSnapshotsAdapter : RecyclerView.Adapter<SentSnapshotsAdapter.ViewHolde
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val it = items[position]
         holder.tvTime.text = format.format(Date(it.timestamp))
-        holder.tvStatus.text = it.status
-        holder.tvPayload.text = it.payload.toString()
+        
+        // Show type indicator and status
+        val typeIndicator = if (it.type == "saved") "💾 SAVED" else "📤 SENT"
+        holder.tvStatus.text = "$typeIndicator - ${it.status}"
+        
+        // For saved data, show filename instead of full payload
+        if (it.type == "saved") {
+            val filename = it.payload["filename"] as? String ?: "unknown"
+            val size = it.payload["size"] as? Long ?: 0L
+            holder.tvPayload.text = "File: $filename (${formatSize(size)})"
+        } else {
+            holder.tvPayload.text = it.payload.toString()
+        }
+        
         holder.tvAttempts.text = "${it.attempts}"
+    }
+    
+    private fun formatSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            else -> "${bytes / (1024 * 1024)} MB"
+        }
     }
 
     override fun getItemCount(): Int = items.size
