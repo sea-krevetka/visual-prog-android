@@ -6,10 +6,12 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.example.calc.data.model.LocationData
 import com.example.calc.data.repository.LocationRepository
@@ -22,6 +24,7 @@ class LocationController(
     private val mainLooper: Looper
 ) : LocationListener {
 
+    private val TAG = "LocationController"
     private val locationManager: LocationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val locationRepository = LocationRepository(context)
@@ -46,28 +49,53 @@ class LocationController(
 
     fun startLocationUpdates() {
         backgroundHandler.post {
-            if (!hasLocationPermission()) {
-                mainHandler.post { listeners.forEach { it.onLocationError("Location permission not granted") } }
-                return@post
-            }
-
             try {
-                locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER, 1000L, 1f, this, handlerThread.looper
-                )
-                locationManager.requestLocationUpdates(
-                    LocationManager.NETWORK_PROVIDER, 1000L, 1f, this, handlerThread.looper
-                )
+                if (!hasLocationPermission()) {
+                    Log.w(TAG, "Location permission not granted")
+                    mainHandler.post { listeners.forEach { it.onLocationError("Location permission not granted") } }
+                    return@post
+                }
+
+                try {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER, 1000L, 1f, this, handlerThread.looper
+                    )
+                    Log.d(TAG, "GPS updates requested")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to request GPS updates: ${e.message}", e)
+                }
+                
+                try {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.NETWORK_PROVIDER, 1000L, 1f, this, handlerThread.looper
+                    )
+                    Log.d(TAG, "Network location updates requested")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to request network location updates: ${e.message}", e)
+                }
+                
                 mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Location updates started") } }
-            } catch (ex: SecurityException) {
+            } catch (ex: Exception) {
+                Log.e(TAG, "Failed to start location updates: ${ex.message}", ex)
                 mainHandler.post { listeners.forEach { it.onLocationError("Failed to start location updates: ${ex.message}") } }
             }
         }
     }
 
     fun stopLocationUpdates() {
-        backgroundHandler.post { locationManager.removeUpdates(this) }
-        handlerThread.quitSafely()
+        try {
+            backgroundHandler.post {
+                try {
+                    locationManager.removeUpdates(this)
+                    Log.d(TAG, "Location updates stopped")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error removing location updates: ${e.message}", e)
+                }
+            }
+            handlerThread.quitSafely()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping location updates: ${e.message}", e)
+        }
     }
 
     override fun onLocationChanged(location: Location) {
