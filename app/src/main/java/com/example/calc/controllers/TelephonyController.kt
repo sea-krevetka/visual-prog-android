@@ -372,8 +372,19 @@ class TelephonyController(private val context: Context) {
                 zmqSender = ZmqSender(context, endpoint)
                 zmqSender?.start()
                 zmqEnabled = true
+                Log.d(TAG, "ZMQ enabled: $endpoint - starting batch send of saved data")
+                
+                // Batch send all saved telemetry data
+                backgroundHandler.postDelayed({
+                    try {
+                        zmqSender?.batchSendAllSavedData()
+                        Log.d(TAG, "Batch send initiated")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error in batch send: ${e.message}", e)
+                    }
+                }, 500)  // Give connection 500ms to establish
             } catch (t: Throwable) {
-                Log.w(TAG, "Failed to enable ZMQ: ${t.message}")
+                Log.w(TAG, "Failed to enable ZMQ: ${t.message}", t)
                 zmqEnabled = false
             }
         }

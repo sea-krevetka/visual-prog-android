@@ -64,11 +64,16 @@ class SendLogRepository(private val context: Context) {
                     
                     for (file in files) {
                         try {
+                            val fileContent = file.readText()
                             val timestamp = extractTimestamp(file.name)
                             val entry = SendLogEntry(
                                 timestamp = timestamp,
                                 status = "SAVED (Local)",
-                                payload = mapOf("filename" to file.name, "size" to file.length()),
+                                payload = mapOf(
+                                    "filename" to file.name, 
+                                    "size" to file.length(),
+                                    "content" to fileContent  // Include full JSON content
+                                ),
                                 attempts = 0,
                                 type = "saved"
                             )
@@ -85,8 +90,10 @@ class SendLogRepository(private val context: Context) {
                 Log.e(TAG, "Error reading telemetry files: ${e.message}", e)
             }
             
-            Log.d(TAG, "Total entries loaded: ${allEntries.size}")
-            return allEntries.sortedByDescending { it.timestamp }
+            val allSorted = allEntries.sortedByDescending { it.timestamp }
+            val lastN = allSorted.take(120)  // Limit to last 120 entries
+            Log.d(TAG, "Total entries loaded: ${allEntries.size}, returning: ${lastN.size}")
+            return lastN
         } catch (t: Throwable) {
             Log.e(TAG, "Error in readAll: ${t.message}", t)
             return emptyList()
@@ -117,3 +124,5 @@ class SendLogRepository(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clear logs: ${e.message}")
         }
+    }
+}

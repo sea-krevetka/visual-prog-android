@@ -50,6 +50,34 @@ class ZmqSender(private val context: Context, private val endpoint: String) {
         } catch (_: Throwable) {}
     }
 
+    fun batchSendAllSavedData() {
+        Log.d(TAG, "Starting batch send of all saved data")
+        try {
+            // Read all telemetry files
+            val telemetryDir = java.io.File(context.filesDir, "telephony")
+            
+            if (telemetryDir.exists() && telemetryDir.isDirectory) {
+                val files = telemetryDir.listFiles()?.sortedBy { it.lastModified() } ?: emptyList()
+                Log.d(TAG, "Found ${files.size} telemetry files to batch send")
+                
+                for (file in files) {
+                    try {
+                        val content = file.readText()
+                        sendAsync(content)
+                        Log.d(TAG, "Queued batch: ${file.name}")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error reading batch file ${file.name}: ${e.message}")
+                    }
+                }
+                Log.d(TAG, "Batch send queued: ${files.size} items")
+            } else {
+                Log.d(TAG, "No telemetry files found for batch send")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in batchSendAllSavedData: ${e.message}", e)
+        }
+    }
+
     private fun startWorker() {
         if (retrying.getAndSet(true)) return
         executor.submit {
