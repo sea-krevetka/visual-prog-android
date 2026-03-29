@@ -4,8 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="#f5f5f5"
-    android:padding="16dp"
-    android:gravity="center">
+    android:padding="16dp">
 
     <TextView
         android:layout_width="wrap_content"
@@ -14,55 +13,79 @@
         android:textSize="28sp"
         android:textStyle="bold"
         android:textColor="#333333"
-        android:layout_marginBottom="40dp" />
+        android:layout_marginBottom="24dp" />
 
-    <Button
-        android:id="@+id/btnGoToCalculator"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="Калькулятор"
-        android:textSize="18sp"
-        android:backgroundTint="#42a5f5"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-    <Button
-        android:id="@+id/btnGoToPlayer"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="Медиаплеер"
-        android:textSize="18sp"
-        android:backgroundTint="#66bb6a"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="16dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <Button
-        android:id="@+id/btnGoToLocation"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="Местоположение"
-        android:textSize="18sp"
-        android:backgroundTint="#ffa726"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="16dp" />
+            <Button
+                android:id="@+id/btnGoToCalculator"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="Калькулятор"
+                android:textSize="18sp"
+                android:backgroundTint="#42a5f5"
+                android:textColor="#ffffff"
+                android:layout_marginBottom="12dp" />
 
-    <Button
-        android:id="@+id/btnGoToTelephony"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="Мобильные сети"
-        android:textSize="18sp"
-        android:backgroundTint="#ab47bc"
-        android:textColor="#ffffff"
-        android:layout_marginBottom="16dp" />
+            <Button
+                android:id="@+id/btnGoToPlayer"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="Медиаплеер"
+                android:textSize="18sp"
+                android:backgroundTint="#66bb6a"
+                android:textColor="#ffffff"
+                android:layout_marginBottom="12dp" />
 
-    <Button
-        android:id="@+id/btnGoToZMQ"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="ZMQ Сокеты"
-        android:textSize="18sp"
-        android:backgroundTint="#26a69a"
-        android:textColor="#ffffff" />
+            <Button
+                android:id="@+id/btnGoToLocation"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="Местоположение"
+                android:textSize="18sp"
+                android:backgroundTint="#ffa726"
+                android:textColor="#ffffff"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnGoToTelephony"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="📡 Мобильные сети"
+                android:textSize="18sp"
+                android:backgroundTint="#ab47bc"
+                android:textColor="#ffffff"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnGoToZMQ"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="ZMQ Сокеты"
+                android:textSize="18sp"
+                android:backgroundTint="#26a69a"
+                android:textColor="#ffffff"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnViewLogs"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="🔍 Логи ошибок"
+                android:textSize="18sp"
+                android:backgroundTint="#ef5350"
+                android:textColor="#ffffff" />
+
+        </LinearLayout>
+
+    </ScrollView>
 
 </LinearLayout>

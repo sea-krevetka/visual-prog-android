@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.example.calc.R
 import com.example.calc.controllers.utils.LocationTracker
+import com.example.calc.utils.CrashLogger
 
 class MainActivity : AppCompatActivity() {
 
@@ -18,6 +19,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize crash logger
+        CrashLogger.init(this)
+        
         setContentView(R.layout.activity_main)
 
         findViewById<Button>(R.id.btnGoToCalculator).setOnClickListener {
@@ -38,6 +43,10 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnGoToZMQ).setOnClickListener {
             startActivity(Intent(this, ZMQActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btnViewLogs)?.setOnClickListener {
+            startActivity(Intent(this, CrashLogViewerActivity::class.java))
         }
 
         checkLocationPermission()

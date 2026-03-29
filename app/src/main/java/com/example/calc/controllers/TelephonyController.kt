@@ -33,6 +33,7 @@ import com.example.calc.data.repository.LocationRepository
 import com.example.calc.data.repository.TelephonyRepository
 import com.example.calc.controllers.utils.ClientIdUtil
 import com.example.calc.controllers.utils.ZmqSender
+import com.example.calc.utils.CrashLogger
 import com.google.gson.Gson
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -83,9 +84,11 @@ class TelephonyController(private val context: Context) {
                     telephonyManager.allCellInfo
                 } catch (e: SecurityException) {
                     Log.e(TAG, "SecurityException reading cell info", e)
+                    CrashLogger.logException(TAG, "SecurityException reading cell info", e)
                     null
                 } catch (e: Exception) {
                     Log.e(TAG, "Unexpected error reading cell info (Android 15?): ${e.message}", e)
+                    CrashLogger.logException(TAG, "Unexpected error reading cell info", e)
                     null
                 }
 
@@ -126,6 +129,7 @@ class TelephonyController(private val context: Context) {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Fatal error in fetchOnce: ${e.message}", e)
+                CrashLogger.logException(TAG, "Fatal error in fetchOnce", e)
                 mainHandler.post { listener.onError("Error fetching telephony data: ${e.message}") }
             }
         }

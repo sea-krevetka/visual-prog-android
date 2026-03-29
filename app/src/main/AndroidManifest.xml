@@ -53,6 +53,10 @@
             android:name=".ui.SentSnapshotsActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.CrashLogViewerActivity"
+            android:exported="false" />
+
         <service
             android:name=".ui.TelephonyBackgroundService"
             android:exported="false" />
