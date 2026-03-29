@@ -39,6 +39,7 @@ class TelephonyActivity : AppCompatActivity() {
     private lateinit var btnZmqUpdate: Button
     private lateinit var btnShowSent: Button
     private lateinit var btnServiceToggle: Button
+    private lateinit var btnRefreshData: Button
     private lateinit var chartSignal: ImPlotSignalChartView
     private val gson = Gson()
 
@@ -131,6 +132,7 @@ class TelephonyActivity : AppCompatActivity() {
         btnZmqToggle = findViewById(R.id.btnZmqToggle)
         btnZmqUpdate = findViewById(R.id.btnZmqUpdate)
         btnShowSent = findViewById(R.id.btnShowSent)
+        btnRefreshData = findViewById(R.id.btnRefreshData)
 
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         etZmqHost.setText(prefs.getString(PREF_HOST, "192.168.62.19")) // Default to a common LAN IP
@@ -138,6 +140,11 @@ class TelephonyActivity : AppCompatActivity() {
 
         if (prefs.getBoolean(PREF_SEND_ENABLED, false)) {
             btnZmqToggle.text = "Disable Send"
+        }
+
+        btnRefreshData.setOnClickListener {
+            Toast.makeText(this, "Refreshing data...", Toast.LENGTH_SHORT).show()
+            loadAndDisplaySavedData()
         }
 
         btnZmqToggle.setOnClickListener {
@@ -298,6 +305,64 @@ class TelephonyActivity : AppCompatActivity() {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             updateServiceToggleButton(prefs)
         }
+        
+        // Load and display saved data
+        loadAndDisplaySavedData()
+    }
+    
+    private fun loadAndDisplaySavedData() {
+        Thread {
+            try {
+                Log.d(TAG, "Loading saved telemetry data from disk")
+                val telephonyDir = java.io.File(filesDir, "telephony")
+                
+                if (!telephonyDir.exists()) {
+                    Log.d(TAG, "Telephony directory does not exist yet")
+                    tvCellInfo.post {
+                        tvCellInfo.text = "⏳ Waiting for data collection to start...\nEnsure service is running."
+                    }
+                    return@Thread
+                }
+                
+                val files = telephonyDir.listFiles()?.filter { it.name.endsWith(".json") } ?: emptyList()
+                Log.d(TAG, "Found ${files.size} saved telemetry files")
+                
+                if (files.isEmpty()) {
+                    tvCellInfo.post {
+                        tvCellInfo.text = "📂 No data collected yet.\nEnsure the background service is running and collecting data."
+                    }
+                    return@Thread
+                }
+                
+                // Load latest file and update chart and display
+                val latestFile = files.sortedByDescending { it.lastModified() }.firstOrNull()
+                if (latestFile != null) {
+                    try {
+                        val json = latestFile.readText()
+                        val data = gson.fromJson(json, TelephonyData::class.java)
+                        
+                        Log.d(TAG, "Loaded latest telemetry: ${data.cellInfo.size} cells, location=${data.location?.latitude}")
+                        
+                        chartSignal.updateFromTelephonyData(data)
+                        
+                        tvCellInfo.post {
+                            val cellCount = data.cellInfo.size
+                            val locStr = if (data.location != null) {
+                                String.format("📍 %.4f, %.4f", data.location.latitude, data.location.longitude)
+                            } else "📍 No location"
+                            
+                            tvCellInfo.text = "✓ Latest data: ${data.cellInfo.size} cells | $locStr\n" +
+                                "Files saved: ${files.size}\n" +
+                                "Updated: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(data.timestamp))}"
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading latest file: ${e.message}", e)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in loadAndDisplaySavedData: ${e.message}", e)
+            }
+        }.start()
     }
 
     override fun onPause() {
