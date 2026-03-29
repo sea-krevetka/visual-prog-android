@@ -92,6 +92,8 @@ class ImPlotSignalChartView @JvmOverloads constructor(
         }
 
         if (hasData) {
+            // Force immediate redraw, not just on next animation frame
+            invalidate()
             postInvalidateOnAnimation()
         }
     }

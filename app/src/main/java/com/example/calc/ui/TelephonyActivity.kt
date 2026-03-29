@@ -324,7 +324,7 @@ class TelephonyActivity : AppCompatActivity() {
                     return@Thread
                 }
                 
-                val files = telephonyDir.listFiles()?.filter { it.name.endsWith(".json") } ?: emptyList()
+                val files = telephonyDir.listFiles()?.filter { it.name.endsWith(".json") }?.sortedByDescending { it.lastModified() } ?: emptyList()
                 Log.d(TAG, "Found ${files.size} saved telemetry files")
                 
                 if (files.isEmpty()) {
@@ -334,16 +334,34 @@ class TelephonyActivity : AppCompatActivity() {
                     return@Thread
                 }
                 
-                // Load latest file and update chart and display
-                val latestFile = files.sortedByDescending { it.lastModified() }.firstOrNull()
+                // Load all files into the chart (up to 120 points)
+                val filesToLoad = files.take(120)
+                var processedCount = 0
+                
+                filesToLoad.forEach { file ->
+                    try {
+                        val json = file.readText()
+                        val data = gson.fromJson(json, TelephonyData::class.java)
+                        Log.d(TAG, "Loaded file: ${file.name} with ${data.cellInfo.size} cells")
+                        
+                        // Update chart with each file
+                        try {
+                            chartSignal.updateFromTelephonyData(data)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to update chart from file ${file.name}: ${e.message}")
+                        }
+                        processedCount++
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error loading file ${file.name}: ${e.message}")
+                    }
+                }
+                
+                // Update UI with summary
+                val latestFile = files.firstOrNull()
                 if (latestFile != null) {
                     try {
                         val json = latestFile.readText()
                         val data = gson.fromJson(json, TelephonyData::class.java)
-                        
-                        Log.d(TAG, "Loaded latest telemetry: ${data.cellInfo.size} cells, location=${data.location?.latitude}")
-                        
-                        chartSignal.updateFromTelephonyData(data)
                         
                         tvCellInfo.post {
                             val cellCount = data.cellInfo.size
@@ -351,16 +369,19 @@ class TelephonyActivity : AppCompatActivity() {
                                 String.format("📍 %.4f, %.4f", data.location.latitude, data.location.longitude)
                             } else "📍 No location"
                             
-                            tvCellInfo.text = "✓ Latest data: ${data.cellInfo.size} cells | $locStr\n" +
-                                "Files saved: ${files.size}\n" +
-                                "Updated: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(data.timestamp))}"
+                            tvCellInfo.text = "✓ Latest: ${data.cellInfo.size} cells | $locStr\n" +
+                                "Files loaded: $processedCount / ${files.size}\n" +
+                                "Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(data.timestamp))}"
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error loading latest file: ${e.message}", e)
+                        Log.e(TAG, "Error loading latest file: ${e.message}")
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in loadAndDisplaySavedData: ${e.message}", e)
+                tvCellInfo.post {
+                    tvCellInfo.text = "❌ Error loading data: ${e.message}"
+                }
             }
         }.start()
     }

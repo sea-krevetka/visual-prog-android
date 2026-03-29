@@ -27,10 +27,11 @@ class LocationController(
     private val locationManager: LocationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val locationRepository = LocationRepository(context)
-    private val handlerThread = HandlerThread("LocationThread").apply { start() }
-    private val backgroundHandler = Handler(handlerThread.looper)
+    private var handlerThread: HandlerThread? = null
+    private var backgroundHandler: Handler? = null
     private val mainHandler = Handler(mainLooper)
     private val listeners = mutableListOf<LocationListener>()
+    private var isRunning = false
 
     interface LocationListener {
         fun onLocationUpdated(locationData: LocationData)
@@ -47,7 +48,18 @@ class LocationController(
     }
 
     fun startLocationUpdates() {
-        backgroundHandler.post {
+        if (isRunning) {
+            Log.w(TAG, "Location updates already running")
+            return
+        }
+        
+        // Create new HandlerThread each time (old one is quit)
+        if (handlerThread == null || !handlerThread!!.isAlive) {
+            handlerThread = HandlerThread("LocationThread").apply { start() }
+            backgroundHandler = Handler(handlerThread!!.looper)
+        }
+        
+        backgroundHandler?.post {
             Log.d(TAG, "startLocationUpdates called")
             if (!hasLocationPermission()) {
                 Log.e(TAG, "Location permission not granted")
@@ -58,13 +70,14 @@ class LocationController(
             try {
                 Log.d(TAG, "Requesting GPS_PROVIDER updates (1000ms, 1m threshold)")
                 locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER, 1000L, 1f, this, handlerThread.looper
+                    LocationManager.GPS_PROVIDER, 1000L, 1f, this@LocationController, handlerThread!!.looper
                 )
                 Log.d(TAG, "Requesting NETWORK_PROVIDER updates (1000ms, 1m threshold)")
                 locationManager.requestLocationUpdates(
-                    LocationManager.NETWORK_PROVIDER, 1000L, 1f, this, handlerThread.looper
+                    LocationManager.NETWORK_PROVIDER, 1000L, 1f, this@LocationController, handlerThread!!.looper
                 )
                 Log.d(TAG, "Location updates started successfully")
+                isRunning = true
                 mainHandler.post { listeners.forEach { it.onLocationStatusChanged("Location updates started") } }
             } catch (ex: SecurityException) {
                 Log.e(TAG, "Failed to start location updates: ${ex.message}", ex)
@@ -74,8 +87,16 @@ class LocationController(
     }
 
     fun stopLocationUpdates() {
-        backgroundHandler.post { locationManager.removeUpdates(this) }
-        handlerThread.quitSafely()
+        if (!isRunning) return
+        isRunning = false
+        Log.d(TAG, "Stopping location updates")
+        try {
+            locationManager.removeUpdates(this)
+            Log.d(TAG, "Location manager updates removed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error removing location updates: ${e.message}")
+        }
+        // Don't quit the handler thread here, just let it exist for reuse
     }
 
     override fun onLocationChanged(location: Location) {
