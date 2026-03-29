@@ -43,65 +43,115 @@ class TelephonyBackgroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "TelephonyBackgroundService.onCreate()")
-
-        telephonyController = TelephonyController(this)
-        locationController = LocationController(this, mainLooper)
-
         try {
-            locationController.startLocationUpdates()
-            Log.d(TAG, "Location updates started")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start location updates: ${e.message}", e)
-        }
+            telephonyController = TelephonyController(this)
+            Log.d(TAG, "TelephonyController created")
+            
+            locationController = LocationController(this, mainLooper)
+            Log.d(TAG, "LocationController created")
 
-        createNotificationChannel()
+            try {
+                locationController.startLocationUpdates()
+                Log.d(TAG, "Location updates started")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start location updates: ${e.message}", e)
+            }
+
+            createNotificationChannel()
+            Log.d(TAG, "Notification channel created")
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error in onCreate: ${e.message}", e)
+            e.printStackTrace()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "TelephonyBackgroundService.onStartCommand() action=${intent?.action}")
-        when (intent?.action) {
-            ACTION_START -> {
-                Log.d(TAG, "ACTION_START received, starting foreground service and data collection")
-                startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is running"))
-                startTelemetryCollection()
+        try {
+            when (intent?.action) {
+                ACTION_START -> {
+                    Log.d(TAG, "ACTION_START received, starting foreground service and data collection")
+                    try {
+                        startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is running"))
+                        Log.d(TAG, "Foreground service started")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting foreground: ${e.message}", e)
+                    }
+                    try {
+                        startTelemetryCollection()
+                        Log.d(TAG, "Telemetry collection started")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting telemetry: ${e.message}", e)
+                    }
+                }
+                ACTION_STOP -> {
+                    Log.d(TAG, "ACTION_STOP received, stopping service")
+                    try {
+                        stopForeground(true)
+                        stopSelf()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error stopping foreground: ${e.message}", e)
+                    }
+                }
+                ACTION_ENABLE_ZMQ -> {
+                    val host = intent.getStringExtra(EXTRA_ZMQ_HOST) ?: "127.0.0.1"
+                    val port = intent.getIntExtra(EXTRA_ZMQ_PORT, 2222)
+                    Log.d(TAG, "ACTION_ENABLE_ZMQ: $host:$port")
+                    try {
+                        telephonyController.enableZmq(host, port)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error enabling ZMQ: ${e.message}", e)
+                    }
+                }
+                ACTION_DISABLE_ZMQ -> {
+                    Log.d(TAG, "ACTION_DISABLE_ZMQ received")
+                    try {
+                        telephonyController.disableZmq()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error disabling ZMQ: ${e.message}", e)
+                    }
+                }
+                else -> {
+                    Log.d(TAG, "Unknown action, starting foreground service with default state")
+                    try {
+                        startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is ready"))
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting foreground with default: ${e.message}", e)
+                    }
+                }
             }
-            ACTION_STOP -> {
-                Log.d(TAG, "ACTION_STOP received, stopping service")
-                stopForeground(true)
-                stopSelf()
-            }
-            ACTION_ENABLE_ZMQ -> {
-                val host = intent.getStringExtra(EXTRA_ZMQ_HOST) ?: "127.0.0.1"
-                val port = intent.getIntExtra(EXTRA_ZMQ_PORT, 2222)
-                Log.d(TAG, "ACTION_ENABLE_ZMQ: $host:$port")
-                telephonyController.enableZmq(host, port)
-            }
-            ACTION_DISABLE_ZMQ -> {
-                Log.d(TAG, "ACTION_DISABLE_ZMQ received")
-                telephonyController.disableZmq()
-            }
-            else -> {
-                Log.d(TAG, "Unknown action, starting foreground service with default state")
-                startForeground(NOTIFICATION_ID, buildNotification("Telephony monitoring is ready"))
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error in onStartCommand: ${e.message}", e)
+            e.printStackTrace()
         }
         return START_STICKY
     }
 
     private fun startTelemetryCollection() {
-        telephonyController.startUpdates(object : TelephonyController.TelephonyListener {
-            override fun onCellInfo(text: String) {
-                Log.d(TAG, text)
-            }
+        try {
+            Log.d(TAG, "Starting telemetry collection listener")
+            telephonyController.startUpdates(object : TelephonyController.TelephonyListener {
+                override fun onCellInfo(text: String) {
+                    Log.d(TAG, text)
+                }
 
-            override fun onCellData(data: TelephonyData) {
-                broadcastTelemetry(data)
-            }
+                override fun onCellData(data: TelephonyData) {
+                    try {
+                        broadcastTelemetry(data)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error broadcasting telemetry: ${e.message}", e)
+                    }
+                }
 
-            override fun onError(message: String) {
-                Log.w(TAG, message)
-            }
-        }, ContextCompat.getMainExecutor(this))
+                override fun onError(message: String) {
+                    Log.w(TAG, message)
+                }
+            }, ContextCompat.getMainExecutor(this))
+            Log.d(TAG, "Telemetry collection listener started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error starting telemetry collection: ${e.message}", e)
+            e.printStackTrace()
+        }
     }
 
     private fun broadcastTelemetry(data: TelephonyData) {

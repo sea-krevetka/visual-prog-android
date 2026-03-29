@@ -47,6 +47,7 @@ class TelephonyActivity : AppCompatActivity() {
     private val telemetryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             try {
+                Log.i(TAG, "BroadcastReceiver.onReceive called")
                 if (intent?.action == TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE) {
                     val json = intent.getStringExtra(TelephonyBackgroundService.EXTRA_TELEMETRY_JSON)
                     Log.d(TAG, "Received telemetry broadcast: ${json?.take(100)}...")
@@ -90,48 +91,42 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i(TAG, "===== onCreate started =====")
+        
         try {
             setContentView(R.layout.activity_telephony)
-            Log.d(TAG, "Content view set")
+            Log.i(TAG, "✓ setContentView succeeded")
         } catch (e: Exception) {
-            Log.e(TAG, "Fatal error setting content view: ${e.message}", e)
-            CrashLogger.logException(TAG, "onCreate setContentView failed", e)
-            finish()
+            Log.e(TAG, "❌ CRASH in setContentView: ${e.javaClass.simpleName}: ${e.message}", e)
+            e.printStackTrace()
             return
         }
-
+        
         try {
             initializeViews()
-            Log.d(TAG, "Views initialized")
+            Log.i(TAG, "✓ initializeViews succeeded")
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing views: ${e.message}", e)
-            CrashLogger.logException(TAG, "initializeViews failed", e)
-            tvCellInfo.text = "❌ Error initializing views: ${e.message}"
-            finish()
-            return
+            Log.e(TAG, "❌ CRASH in initializeViews: ${e.javaClass.simpleName}: ${e.message}", e)
+            e.printStackTrace()
         }
-
+        
         try {
             initializeZmqViews()
-            Log.d(TAG, "ZMQ views initialized")
+            Log.i(TAG, "✓ initializeZmqViews succeeded")
         } catch (e: Exception) {
-            Log.e(TAG, "Error initializing ZMQ views: ${e.message}", e)
-            CrashLogger.logException(TAG, "initializeZmqViews failed", e)
-            tvCellInfo.text = "❌ Error initializing ZMQ: ${e.message}"
-            finish()
-            return
+            Log.e(TAG, "❌ CRASH in initializeZmqViews: ${e.javaClass.simpleName}: ${e.message}", e)
+            e.printStackTrace()
         }
-
+        
         try {
             checkPermissions()
-            Log.d(TAG, "Permissions checked")
+            Log.i(TAG, "✓ checkPermissions succeeded")
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking permissions: ${e.message}", e)
-            CrashLogger.logException(TAG, "checkPermissions failed", e)
-            tvCellInfo.text = "❌ Error checking permissions: ${e.message}"
-            finish()
-            return
+            Log.e(TAG, "❌ CRASH in checkPermissions: ${e.javaClass.simpleName}: ${e.message}", e)
+            e.printStackTrace()
         }
+        
+        Log.i(TAG, "===== onCreate completed =====")
     }
 
     private fun initializeViews() {
@@ -351,6 +346,7 @@ class TelephonyActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        Log.i(TAG, "onResume started")
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 // Android 14+ requires flags for registerReceiver
@@ -365,17 +361,29 @@ class TelephonyActivity : AppCompatActivity() {
                     IntentFilter(TelephonyBackgroundService.ACTION_TELEMETRY_UPDATE)
                 )
             }
+            Log.i(TAG, "Broadcast receiver registered")
         } catch (e: Exception) {
             Log.e(TAG, "Error registering receiver: ${e.message}", e)
         }
         
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            updateServiceToggleButton(prefs)
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                updateServiceToggleButton(prefs)
+                Log.i(TAG, "Service toggle button updated")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating service button: ${e.message}", e)
         }
         
-        // Load and display saved data
-        loadAndDisplaySavedData()
+        try {
+            // Load and display saved data
+            loadAndDisplaySavedData()
+            Log.i(TAG, "Data loading started")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading data: ${e.message}", e)
+        }
+        Log.i(TAG, "onResume completed")
     }
     
     private fun loadAndDisplaySavedData() {
